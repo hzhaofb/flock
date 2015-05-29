@@ -1,0 +1,238 @@
+;; -*- coding: utf-8 -*-
+;;
+
+;; Author: Howard Zhao
+;;
+;; Component to manage the worker instances including
+;; checking for expired workers.
+
+(ns flock.worker
+  (:require [clojure.java.jdbc :as jdbc]
+            [clojure.tools.logging :as log]
+            [clojure.string :refer [join]]
+            [ring.middleware.json :refer [wrap-json-body wrap-json-params wrap-json-response]]
+            [ring.middleware.keyword-params :refer [wrap-keyword-params]]
+            [base.util :as util]
+            [base.rest-util :refer [json-response echo]]
+            [component.webservice :refer [WebService]]
+            [component.scheduler :refer [schedule-fixed-delay]]
+            [flock.tasklog :refer [write-tasklog]]
+            [flock.environment :refer [get-env-by-id get-env-by-name]]
+            [flock.util :refer [mydb get-config-int]]
+            [component.rds :refer [get-conn]]
+            [base.mysql :refer :all]
+            [com.stuartsierra.component :as component]
+            [compojure.core :as cc])
+  (:import (com.mysql.jdbc.exceptions.jdbc4
+           MySQLIntegrityConstraintViolationException)))
+
+(defn- convert-heartbeat [worker]
+  (if-let [hb (:heartbeat worker)]
+    (assoc worker :heartbeat (. hb getTime))
+    worker))
+
+(defn- convert-env [comp worker]
+  (->>  (:eid worker)
+        (get-env-by-id (get comp :env-comp))
+        (assoc worker :env)))
+
+(defn- before-response
+  "some processing of worker map before returning to client"
+  [comp worker]
+  (let [worker (convert-heartbeat worker)
+        worker (convert-env comp worker)]
+    worker))
+
+(defn get-worker-by-id
+  [comp wid]
+  (if-let [worker (get-single-row (mydb comp) :worker :wid wid)]
+    (before-response comp worker)))
+
+(defn get-worker-by-ip-pid
+  [comp ip pid]
+  (let [worker (-> (mydb comp)
+                   (jdbc/query ["select * from worker where ip=? and pid=?" ip pid])
+                   (first))]
+    (before-response comp worker)))
+
+(defn start-worker
+  "Called when a new worker starts.
+  Create a worker record using ip address and process pid which is unique.
+  returns worker created"
+  [comp ip pid env]
+  (assert (some? ip) "Invalid ip")
+  (assert (some? pid) "Invalid pid")
+  (let [pid (util/to-int pid)
+        _ (assert (pos? pid))
+        db (mydb comp)
+        eid (get-env-by-name (get comp :env-comp) env)]
+    (assert (some? env) "Invalid env")
+    (try
+      (let [wid (insert-row db :worker {:ip ip :pid pid :eid eid})
+            worker (get-single-row db :worker :wid wid)]
+        (insert-row db :worker_log (assoc worker :event "START"))
+        (log/info "created worker" worker)
+        (before-response comp worker))
+      (catch MySQLIntegrityConstraintViolationException ex
+        (log/info "Worker at ip=" ip "pid=" pid "alreay registered")
+        (-> (get-worker-by-ip-pid comp ip pid)
+            (assoc :msg "worker already registered"))))))
+
+(defn set-admin-cmd
+  "update worker admin command"
+  [comp wid cmd]
+  (if (= '(0) (jdbc/update! (mydb comp)
+                            :worker {:admin_cmd cmd} ["wid=?" wid]))
+    {:msg (str "worker " wid " is not found")}
+    (let [db (mydb comp)
+          worker (get-single-row db :worker :wid wid)]
+      (log/info "Worker " wid " new admin cmd=" cmd)
+      (insert-row db :worker_log (assoc worker :event "ADMIN_CMD"))
+      (before-response comp worker))))
+
+(defn update-heartbeat
+  "update worker heartbeat and status.
+  returns updated worker, including admin_cmd"
+  [comp wid wstatus]
+  (if (= '(0) (jdbc/execute!
+                (mydb comp)
+                ["update worker set wstatus = ?,
+                  heartbeat = current_timestamp() where wid = ?" wstatus wid]))
+    {:msg (str "worker " wid " is not found")
+     :admin_cmd "SHUTDOWN"}
+    (do (log/info "Worker" wid "updated wstatus " wstatus " and heartbeat")
+        (get-worker-by-id comp wid))))
+
+(defn- log-task-expire
+  [comp wid tids]
+  (doseq [tid (flatten tids)] ; use list comprehension
+    (if tid
+      (let [tlog {:wid wid
+                  :tid tid
+                  :error "worker expired"
+                  :event_type "X"}
+            log-comp (get comp :tasklog-comp)]
+        (write-tasklog log-comp tlog)))))
+
+(defn- release-task
+  "complete a task because worker failed to update heartbeat, task in form of {:tid tid :eta eta}"
+  [comp {tid :tid wid :wid rid :rid}]
+  (jdbc/with-db-transaction
+    [txn (mydb comp)]
+    (when (and rid (> rid 0))
+      (jdbc/execute! txn ["call ensure_res_usage()"]))
+    (jdbc/update! txn :schedule {:wid 0} [ "tid=? and wid=?" tid wid])
+    (when (and rid (> rid 0))
+      (jdbc/execute! txn ["call update_res_usage(?, -1)" rid]))
+    (log/info "expire task" tid "wid" wid)))
+
+(defn cleanup-worker
+  "Called when worker shutdown or presumed dead (indicated by event).
+  Release reserved tasks and remove worker row.
+  returns (1) for worker is clean up, (0) for worker is not active"
+  [comp event worker]
+  (log/info "cleanup worker" worker event)
+  (let [db (mydb comp)
+        wid  (worker :wid)
+        sql ["select tid, eta, wid as wid from schedule where wid in (?, ?)" wid (- 0 wid)]
+        tasks (jdbc/query db sql)
+        _ (doall (map (partial release-task comp) tasks))
+        tids (map :tid tasks)
+        tids-str (-> (interpose "," tids)
+                     (join)
+                     (util/trunc 1000))
+        worker-log (assoc worker :event event :tids tids-str)]
+    (log-task-expire comp wid tids)
+    (jdbc/insert! db :worker_log worker-log)
+    (jdbc/delete! db :worker ["wid=?" wid])
+    (jdbc/update! db :schedule {:wid 0} ["wid in (?, ?)" wid (- 0 wid)])))
+
+(defn stop-worker [comp wid]
+  (let [db (mydb comp)]
+    (if-let [worker (get-single-row db :worker "wid" wid)]
+      (do (cleanup-worker comp "SHUTDOWN" worker)
+          {:msg (str "worker " wid " stopped")})
+      {:msg "worker is already dead"})))
+
+(defn- check-dead-workers
+  "check for dead workers and clean them up if any."
+  [comp]
+  (try
+    (let [db (mydb comp)
+          heartbeat (get-config-int comp "flock.worker.heartbeat" 5)
+          max-skip (get-config-int comp "flock.worker.max.skipped.heartbeats" 4)
+          allowance (* heartbeat max-skip)]
+      (log/info "checking for dead worker with heartbeat older than" allowance "secs")
+      (doall
+        (->> ["select * from worker where heartbeat < now() - INTERVAL ? SECOND" allowance]
+             (jdbc/query db)
+             (map #(cleanup-worker comp "EXPIRED" %)))))
+    (catch Exception ex
+      (log/error ex "check dead worker error"))))
+
+(defn start-monitor
+  "start monitor thread that look for dead workers."
+  [comp]
+  (log/info "start monitoring worker using scheduler")
+  (let [monitor-cycle (get-config-int comp "flock.worker.monitor.cycle.sec" 10)
+        monit_worker (fn [] (check-dead-workers comp))
+        scheduler (get comp :scheduler)]
+    (schedule-fixed-delay scheduler {:command monit_worker :delay monitor-cycle}))
+  comp)
+
+(defn list-worker-log [comp wid]
+  {:logs
+    (->> ["select * from worker_log where wid=? order by event_time" wid]
+       (jdbc/query (mydb comp))
+       (map #(before-response comp %)))})
+
+(defn- make-routes [comp]
+  (cc/routes
+    (cc/POST "/worker" [ip pid env :as req]
+             ;; create a new worker with specified ip and pid
+             ;; if already exist, return existing workerId wid
+             (json-response req start-worker comp ip pid env))
+    (cc/PUT "/worker/:wid" [wid wstatus :as req]
+            ;; report status for a given worker and update heartbeat
+            (json-response req update-heartbeat comp wid wstatus))
+    (cc/PUT "/worker/:wid/admin" [wid cmd :as req]
+            ;; set admin command of the worker
+            (json-response req set-admin-cmd comp wid cmd))
+    (cc/DELETE "/worker/:wid" [wid :as req]
+            ;; report worker shutdown
+            (json-response req stop-worker comp wid))
+    (cc/GET "/worker/:wid" [wid :as req]
+            ;; get all details of worker
+            (json-response req get-worker-by-id comp wid))
+    (cc/GET "/worker/ip_pid/:ip/:pid" [ip pid :as req]
+            ;; get all details of worker
+            (json-response req get-worker-by-ip-pid comp ip pid))
+    (cc/GET "/worker_log/:wid" [wid :as req]
+            ;; all worker log for wid
+            (json-response req list-worker-log comp wid))
+    (cc/POST "/pworker" req
+             ;; post on this endpoint for sanity test
+             (json-response req echo req))))
+
+; Domain model component for workers
+(defrecord WorkerComponent [core scheduler flock-db
+                            tasklog-comp env-comp]
+  component/Lifecycle
+
+  (start [this]
+    (let [routes (-> (make-routes this)
+                     (wrap-json-response))]
+      (-> this
+          (start-monitor)
+          (assoc :routes routes))))
+
+  (stop [this]
+    this)
+
+  WebService
+  (get-routes [this]
+    (:routes this)))
+
+(defn new-worker-comp
+  []
+  (map->WorkerComponent {}))

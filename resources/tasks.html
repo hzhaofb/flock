@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+    <title>Flock Tasks</title>
+    {{> style}}
+</head>
+<body>
+{{> side-nav }}
+
+<main id="main-container">
+    <div id="main-content" class="boundary">
+        <div id="analysis-report">
+            <div class="title-block">
+                <h1>Flock Running Tasks</h1>
+            </div>
+            <table class="table-report">
+                <tr>
+                    <th>Task Id</th>
+                    <th>Function</th>
+                    <th>Env</th>
+                    <th>Worker Id</th>
+                    <th>Task Key</th>
+                    <th>ETA</th>
+                    <th>Modified</th>
+                    <th>Params</th>
+                </tr>
+                {{#running}}
+                <tr>
+                    <td><a href="task/{{tid}}">{{tid}}</a></td>
+                    <td>{{fid}}</td>
+                    <td>{{env}}</td>
+                    <td>{{wid}}</td>
+                    <td>{{task_key}}</td>
+                    <td>{{eta}}</td>
+                    <td>{{modified}}</td>
+                    <td>{{params}}</td>
+                </tr>
+                {{/running}}
+            </table>
+        </div>
+        <div id="analysis-report">
+            <div class="title-block">
+                <h1>Flock Pending Tasks</h1>
+            </div>
+            <table class="table-report">
+                <tr>
+                    <th>Task Id</th>
+                    <th>Function</th>
+                    <th>Env</th>
+                    <th>Worker Id</th>
+                    <th>Task Key</th>
+                    <th>ETA</th>
+                    <th>Modified</th>
+                    <th>Params</th>
+                </tr>
+                {{#pending}}
+                <tr>
+                    <td><a href="task/{{tid}}">{{tid}}</a></td>
+                    <td>{{fid}}</td>
+                    <td>{{env}}</td>
+                    <td>{{wid}}</td>
+                    <td>{{task_key}}</td>
+                    <td>{{eta}}</td>
+                    <td>{{modified}}</td>
+                    <td>{{params}}</td>
+                </tr>
+                {{/pending}}
+            </table>
+        </div>
+    </div>
+</main>
+</body>
+</html>
