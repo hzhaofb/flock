@@ -6,6 +6,7 @@
 ;; flock.func
 ;; func defines the method and settings of a group of tasks
 ;; including: fid, lang, function name, settings
+;; todo remove memcache
 
 (ns flock.func
   (:require [clojure.java.jdbc :as jdbc]

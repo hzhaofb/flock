@@ -1,7 +1,7 @@
 ;; -*- coding: utf-8 -*-
 ;; Author: Howard Zhao
 ;; Purpose: renders admin pages
-;;
+;; TODO remove
 
 (ns flock.admin
   (:require [com.stuartsierra.component :as component]

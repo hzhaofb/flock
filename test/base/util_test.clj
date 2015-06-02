@@ -4,16 +4,6 @@
             [base.util :as fu])
   (:import (clojure.lang PersistentQueue)))
 
-(facts "prefixes"
-       (fact (fu/chop-prefix "foobar" "foo") => "bar")
-       (fact (fu/chop-prefix "foobar" "") => "foobar")
-       (fact (fu/chop-prefix "foobar" "bar") => "foobar"))
-
-(facts "suffixes"
-       (fact (fu/chop-suffix "foobar" "bar") => "foo")
-       (fact (fu/chop-suffix "foobar" "") => "foobar")
-       (fact (fu/chop-suffix "foobar" "baz") => "foobar"))
-
 (facts "assert-some"
        (fact
          (fu/assert-some {:a 1 :b 2} [:a :b]) => nil

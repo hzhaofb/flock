@@ -6,7 +6,7 @@
 ;; 
 ;; Purpose: look up environment by eid or name
 ;;   Store in memcache for performance
-;;
+;;todo  remove memcache
 
 (ns flock.environment
   (:require [com.stuartsierra.component :as component]

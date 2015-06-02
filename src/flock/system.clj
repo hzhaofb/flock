@@ -12,7 +12,7 @@
     [component.http-kit :as http-kit]
     [component.health :as health]
     [component.graphite :as graphite]
-    [component.rds :as rds]
+    [component.database :as database]
     [component.memcache :as memcache]
     [component.nrepl :as nrepl]
     [component.scheduler :as scheduler]
@@ -34,11 +34,11 @@
                                      [:core])
     :memcache       (component/using (memcache/new-memcached)
                                      [:core])
-    :flock-db       (component/using (rds/new-database "flock")
+    :flock-db       (component/using (database/new-database "flock")
                                      [:core])
-    :flockreplica-db (component/using (rds/new-database "flockreplica")
+    :flockreplica-db (component/using (database/new-database "flockreplica")
                                      [:core])
-    :flocklog-db    (component/using (rds/new-database "flocklog")
+    :flocklog-db    (component/using (database/new-database "flocklog")
                                      [:core])
     :server-comp    (component/using (server/new-server-comp)
                                      [:core
@@ -95,10 +95,7 @@
                                       :func-comp
                                       :task-comp
                                       :admin-comp
-                                      ])
-    :nrepl          (component/using (nrepl/new-nrepl)
-                                     [:core])
-    ))
+                                      ])))
 
 (defn dev-system []
   ; current no difference from prod-system.

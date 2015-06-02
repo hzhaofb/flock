@@ -5,7 +5,7 @@
             [midje.sweet :refer :all]
             [flock.func :refer :all]
             [com.stuartsierra.component :as component]
-            [component.rds :as rds]
+            [component.database :as rds]
             [component.core :as core]
             [flock.tasklog :as tasklog]
             [flock.worker :as worker]
@@ -38,26 +38,6 @@
    "flocklog.rds.database" "flocklogtest"
    "flocklog.rds.user" "root"
    "flocklog.rds.password" "root"})
-
-; used for jenkin build test
-(def test-builder-config
-  (into test-local-config
-        {"flock.rds.host" "flock-test.cpoex7ipxkew.us-east-1.rds.amazonaws.com"
-         "flock.rds.database" "flockbuilder"
-         "flock.rds.user" "flockmaster"
-         "flock.rds.password" "zbVnAM6qhFQVEA9"
-         "flocklog.rds.host" "flock-test.cpoex7ipxkew.us-east-1.rds.amazonaws.com"
-         "flocklog.rds.database" "flocklogbuilder"
-         "flocklog.rds.user" "flockmaster"
-         "flocklog.rds.password" "zbVnAM6qhFQVEA9"
-         }))
-
-(defn- get-test-config
-  []
-  (if (= "builder" (System/getenv "FLOCK_TEST_ENV"))
-    test-builder-config
-    test-local-config))
-
 
 (defn test-system
   []
@@ -99,8 +79,6 @@
 (defn func-comp [] (get (tsys) :func-comp))
 
 (defn env-comp [] (get (tsys) :env-comp))
-
-(defn admin-comp [] (get (tsys) :admin-comp))
 
 (defn cache-comp [] (get (tsys) :memcache))
 

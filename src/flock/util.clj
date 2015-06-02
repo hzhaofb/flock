@@ -9,7 +9,7 @@
 
 (ns flock.util
   (:require [component.core :refer [cfg]]
-            [component.rds :as rdb]
+            [component.database :as rdb]
             [base.util :as util]))
 
 (defn mydb

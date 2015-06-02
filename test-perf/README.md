@@ -7,8 +7,8 @@
 > call popData(2000);
 
 2. run flock servers in 2+ machines
-3. configure HAProxy to front these flock servers
-4. start [app/flocker](../../flocker) on some worker machine. 
-   You probably want to start many flocker processes in a machine since 
+3. configure a proxy such as HAProxy to front these flock servers
+4. start worker on some worker machine. 
+   You probably want to start many worker processes in a machine since 
    they only stresses flock servers.
     

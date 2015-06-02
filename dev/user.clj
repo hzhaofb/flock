@@ -26,7 +26,7 @@
   [base.util :refer :all]
   [base.rest-util :refer :all]
   [flock.system]
-  [component.rds :as rdb]
+  [component.database :as rdb]
   [flock.test-system :refer :all]
   [flock.worker :refer :all]
   [flock.tasklog :refer :all]

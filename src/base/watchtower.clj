@@ -1,10 +1,6 @@
 ;; -*- coding: utf-8 -*-
-
-;; Author: Howard Zhao
-;; created: 4/27/15
-;; base.watchtower
-;; 
-;; Purpose: Temp home for watchtower changes that's yet be merged to master
+;; TODO: add his copyright and make sure this is subject to the author's copyright.
+;; : Temp home for watchtower changes that's yet be merged to master
 ;;   See https://github.com/ibdknox/watchtower/pull/4
 ;;
 

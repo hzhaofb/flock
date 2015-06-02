@@ -19,7 +19,7 @@
             [flock.tasklog :refer [write-tasklog]]
             [flock.environment :refer [get-env-by-id get-env-by-name]]
             [flock.util :refer [mydb get-config-int]]
-            [component.rds :refer [get-conn]]
+            [component.database :refer [get-conn]]
             [base.mysql :refer :all]
             [com.stuartsierra.component :as component]
             [compojure.core :as cc])

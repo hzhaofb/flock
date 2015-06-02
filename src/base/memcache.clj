@@ -5,7 +5,7 @@
 ;; base.memcache
 ;; 
 ;; Purpose: create memcache connection. Used by memcache component
-;;
+;; TODO: remove this and memcache component
 
 (ns base.memcache
   (:import [net.spy.memcached AddrUtil ConnectionFactory BinaryConnectionFactory

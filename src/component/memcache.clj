@@ -6,6 +6,7 @@
 ;; component.memcache
 ;;
 ;; manages memcache client
+;; todo remove.
 
 (ns component.memcache
   (:require [base.memcache :as mc]

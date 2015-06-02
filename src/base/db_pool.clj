@@ -2,12 +2,10 @@
 
 ;; Author: Howard Zhao
 ;; created: 1/12/15
-;; base.rds_pool
-;; 
-;; Purpose: create connection pool to mysql/rds
+;; Purpose: create connection pool to mysql
 ;;
 
-(ns base.rds-pool
+(ns base.db-pool
   (:import (com.mchange.v2.c3p0 ComboPooledDataSource))
   (:require [base.util :refer [to-int]]))
 

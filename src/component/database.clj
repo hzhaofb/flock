@@ -16,12 +16,13 @@
 ;; following optional config for c3p0 connection pool
 ;; - dbname.rds.max.idle.time.excess.connections
 ;; - dbname.rds.max.idle
+;; TODO change rds to database
 
-(ns component.rds
+(ns component.database
   (:require [com.stuartsierra.component :as component]
             [component.core :refer [cfg]]
             [clojure.tools.logging :as log]
-            [base.rds-pool :as pool]
+            [base.db-pool :as pool]
             [base.util :refer [to-int]]))
 
 (defn- get-conf-val

@@ -342,6 +342,7 @@
     :not-reserved when wid didn't reserve tid"
   [db tid wid new_eta]
   (jdbc/with-db-transaction
+    ;; todo do we need the transaction?
     [txn db]
     (if (and (some? new_eta) (pos? new_eta))
       ;reschedule task to new_eta and indicate if successful

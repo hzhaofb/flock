@@ -1,4 +1,4 @@
--- flock RDS database schema
+-- flock MySql database schema
 
 -- Execution environment such as java, python indicates worker's execution environment
 -- for processing task. This is very small and static table.
@@ -7,7 +7,7 @@ create table environment (
     eid tinyint unsigned not null primary key auto_increment,
     name varchar(25) not null
 );
-insert into environment (name) values ('java'),('python'),('go') ;
+insert into environment (name) values ('worker-cluster-1'),('worker-cluster-1');
 
 -- Task function represent the piece of code that will be executed to process the task.
 -- Each function takes task_key and optional params as input and output new eta to reschedule
@@ -70,7 +70,7 @@ create table schedule (
    key schedule_wid_eid_eta (wid, eid, eta)
 );
 
--- Task details. Can potentially be moved to HBase for higher scalability requirements
+-- Task details.
 drop table if exists task;
 create table task (
    tid bigint not null primary key auto_increment,

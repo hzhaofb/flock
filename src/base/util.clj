@@ -14,27 +14,6 @@
            (java.net InetAddress)
            (java.lang.management ManagementFactory)))
 
-(defn chop-suffix
-  "return the given string with the suffix removed, if it's present"
-  [s sfx]
-  (if (.endsWith s sfx)
-    (subs s 0 (- (count s) (count sfx)))
-    s))
-
-(defn chop-prefix
-  "return the given string with the prefix removed, if it's present"
-  [s pfx]
-  (if (.startsWith s pfx)
-    (subs s (count pfx))
-    s))
-
-(defn select-values
-  "returns a list of values from map for corresponding list of keys.
-   values order perserves the key order.
-   Similiar to select-keys except result is a list and order is preserved."
-  [m ks]
-  (reduce #(conj %1 (m %2)) [] ks))
-
 (defn get-sha1-hash
   "returns sha1 hash hex string for input data"
   [data]

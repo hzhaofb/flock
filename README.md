@@ -1,6 +1,8 @@
 # Flock
 
-Flock is a scalable task scheduler and distributor. Flock can be used to schedule millions of tasks 
+Flock is a scalable task scheduler and distributor. 
+
+Flock is first developed at Flipboard to schedule millions.=Flock can be used to schedule millions of tasks 
 and then distribute them among dynamic number of worker servers to execute these tasks when they are due. 
 For example, you need to crawl tens of millions RSS feeds at different cadence depending their update
 frequency. You can use Flock to schedule and distribute the load to large number of worker processes. 
