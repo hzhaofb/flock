@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+    <title>Flock function Detail</title>
+    {{> style}}
+</head>
+<body>
+{{> side-nav }}
+
+<main id="main-container">
+    <div id="main-content" class="boundary">
+        <div id="analysis-report">
+            <div class="title-block">
+                <h1>Flock Function Details</h1>
+            </div>
+            <table class="table-report">
+                {{#function}}
+                <table class="table-report">
+                    <tr>
+                        <th>Function Property</th>
+                        <th>Value</th>
+                    </tr>
+                    <tr>
+                        <td>Function Id</td>
+                        <td>{{fid}}</td>
+                    </tr>
+                    <tr>
+                        <td>Environment</td>
+                        <td><a href="environment/{{eid}}">{{env}}</a></td>
+                    </tr>
+                    <tr>
+                        <td>Name</td>
+                        <td>{{name}}</td>
+                    </tr>
+                    <tr>
+                        <td>Modified</td>
+                        <td>{{modified}}</a></td>
+                    </tr>
+                    <tr>
+                        <td>Settings</td>
+                        <td>{{settings}}</a></td>
+                    </tr>
+                </table>
+                {{/function}}
+            </table>
+
+            <div class="title-block">
+                <h1>Function Tasks</h1>
+            </div>
+            {{> tasks}}
+        </div>
+    </div>
+</main>
+</body>
+</html>

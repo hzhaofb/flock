@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+    <title>Flock Workers</title>
+    {{> style}}
+</head>
+<body>
+  {{> side-nav }}
+
+  <main id="main-container">
+      <div id="main-content" class="boundary">
+          <div id="analysis-report">
+              <div class="title-block">
+                  <h1>Flock Workers</h1>
+              </div>
+              <table class="table-report">
+                  <tr>
+                      <th>Worker Id</th><th>Env</th>
+                      <th>Host:Pid</th><th>Last Heartbeat</th>
+                      <th>Status</th>
+                      <th>Action</th>
+                  </tr>
+                  {{#workers}}
+                  <tr>
+                      <td><a href="worker/{{wid}}">{{wid}}</a></td>
+                      <td>{{env}}</td>
+                      <td>{{ip}}:{{pid}}</td>
+                      <td>{{heartbeat}}</td>
+                      <td>{{wstatus}}</td>
+                      <td></td>
+                  </tr>
+                  {{/workers}}
+              </table>
+
+              <div class="title-block">
+                  <h1>Worker Logs</h1>
+              </div>
+
+              <table class="table-report">
+                  <tr>
+                      <th>Log Id</th>
+                      <th>Event Time</th>
+                      <th>Event</th>
+                      <th>Worker Id</th>
+                      <th>Env</th>
+                      <th>Host:Pid</th>
+                      <th>Heartbeat</th>
+                      <th>Admin Command</th>
+                      <th>Status</th>
+                  </tr>
+                  {{#logs}}
+                  <tr>
+                      <td>{{wlogid}}</td>
+                      <td>{{event_time}}</td>
+                      <td>{{event}}</td>
+                      <td><a href="worker/{{wid}}">{{wid}}</a></td>
+                      <td>{{env}}</td>
+                      <td>{{ip}}:{{pid}}</td>
+                      <td>{{heartbeat}}</td>
+                      <td>{{admin_cmd}}</td>
+                      <td>{{wstatus}}</td>
+                      <td></td>
+                  </tr>
+                  {{/logs}}
+              </table>
+          </div>
+      </div>
+  </main>
+</body>
+</html>

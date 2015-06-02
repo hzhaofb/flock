@@ -1,0 +1,24 @@
+<table class="table-report">
+    <tr>
+        <th>Task Id</th>
+        <th>Function</th>
+        <th>Env</th>
+        <th>Worker Id</th>
+        <th>Task Key</th>
+        <th>ETA</th>
+        <th>Modified</th>
+        <th>Params</th>
+    </tr>
+    {{#tasks}}
+    <tr>
+        <td><a href="/admin/task/{{tid}}">{{tid}}</a></td>
+        <td><a href="/admin/function/{{fid}}">{{function}}</a></td>
+        <td>{{env}}</td>
+        <td><a href="/admin/worker/{{wid}}">{{wid}}</a></td>
+        <td>{{task_key}}</td>
+        <td>{{eta}}</td>
+        <td>{{modified}}</td>
+        <td>{{params}}</td>
+    </tr>
+    {{/tasks}}
+</table>

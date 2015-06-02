@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+    <title>Flock Environments</title>
+    {{> style}}
+</head>
+<body>
+{{> side-nav }}
+
+<main id="main-container">
+    <div id="main-content" class="boundary">
+        <div id="analysis-report">
+            <div class="title-block">
+                <h1>Flock Environments</h1>
+            </div>
+            <table class="table-report">
+                <tr>
+                    <th>Environment Id</th>
+                    <th>Name</th>
+                </tr>
+                {{#environments}}
+                <tr>
+                    <td>{{eid}}</td>
+                    <td>{{name}}</td>
+                </tr>
+                {{/environments}}
+            </table>
+        </div>
+    </div>
+</main>
+</body>
+</html>
