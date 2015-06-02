@@ -16,7 +16,8 @@
             [clojure.string :as str]
             [component.core :refer [cfg]]
             [base.util :as util])
-  (:import (com.codahale.metrics.graphite Graphite)))
+  (:import (com.codahale.metrics.graphite Graphite)
+           (java.net ConnectException)))
 
 (defn send-raw-metrics
   "send metrics directly to graphite server as configured
@@ -28,11 +29,14 @@
         (:config graphite-comp)
         g (Graphite. host port)
         fullkey (str prefix "." metrics-key)]
-    (when host
-      (.connect g)
-      (doseq [{val :val timestamp :timestamp} val-timestamp-list]
-        (.send g fullkey (str val) timestamp))
-      (.close g))))
+    (try
+      (when host
+        (.connect g)
+        (doseq [{val :val timestamp :timestamp} val-timestamp-list]
+          (.send g fullkey (str val) timestamp))
+        (.close g))
+      (catch ConnectException ex
+        (log/error "failed send metrics to graphite. ConnectionException to" host port)))))
 
 (defrecord GraphiteReporter [core]
   component/Lifecycle

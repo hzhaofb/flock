@@ -9,7 +9,8 @@
   (:require [clojure.java.io :refer [as-url]]
             [clojure.string :as string]
             [clojure.tools.logging :as log]
-            [clojure.string :as str])
+            [clojure.string :as str]
+            [clojure.core.cache :as cache])
   (:import (java.security MessageDigest)
            (java.net InetAddress)
            (java.lang.management ManagementFactory)))
@@ -142,3 +143,20 @@
   (->> (str/split (get conf name) #"[, ]")
        (filter not-empty)
        (map to-int)))
+
+; local TTL cache using clojure.core.cache and provide easier interface
+(defn create-ttl-cache
+  "create an atom with a ttl cache. ttl in milliseconds"
+  [ttl]
+  (atom (cache/ttl-cache-factory {} :ttl ttl)))
+
+(defn get-cache-value
+  "lookup key value from cache-atom"
+  [ac key]
+  (cache/lookup @ac key))
+
+(defn set-cache-value!
+  "update the atom cache with key value. returns value"
+  [ac key value]
+  (swap! ac assoc key value)
+  value)

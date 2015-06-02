@@ -13,7 +13,6 @@
     [component.health :as health]
     [component.graphite :as graphite]
     [component.database :as database]
-    [component.memcache :as memcache]
     [component.nrepl :as nrepl]
     [component.scheduler :as scheduler]
     [flock.server :as server]
@@ -22,8 +21,7 @@
     [flock.environment :as environment]
     [flock.task :as task]
     [flock.func :as func]
-    [flock.worker :as worker]
-    [flock.admin :as admin]))
+    [flock.worker :as worker]))
 
 (defn prod-system []
   (component/system-map
@@ -31,8 +29,6 @@
     :graphite       (component/using (graphite/new-graphite-reporter)
                                      [:core])
     :scheduler      (component/using (scheduler/new-scheduler)
-                                     [:core])
-    :memcache       (component/using (memcache/new-memcached)
                                      [:core])
     :flock-db       (component/using (database/new-database "flock")
                                      [:core])
@@ -46,8 +42,7 @@
                                       :flock-db])
     :env-comp        (component/using (environment/new-env-comp)
                                       [:core
-                                       :flock-db
-                                       :memcache])
+                                       :flock-db])
     :metrics-comp    (component/using (metrics/new-metrics-comp)
                                       [:core
                                        :flock-db
@@ -67,8 +62,7 @@
     :func-comp       (component/using (func/new-func-comp)
                                      [:core
                                       :flock-db
-                                      :env-comp
-                                      :memcache])
+                                      :env-comp])
     :task-comp       (component/using (task/new-task-comp)
                                      [:core
                                       :flock-db
@@ -80,11 +74,6 @@
                                       :scheduler
                                       :graphite
                                       :env-comp])
-    :admin-comp      (component/using (admin/new-admin-comp)
-                                      [:core
-                                       :flock-db
-                                       :flockreplica-db
-                                       :flocklog-db])
     :health-service (component/using (health/new-health-service)
                                      [:core])
     :http-server    (component/using (http-kit/new-web-server)
@@ -94,7 +83,6 @@
                                       :worker-comp
                                       :func-comp
                                       :task-comp
-                                      :admin-comp
                                       ])))
 
 (defn dev-system []

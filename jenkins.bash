@@ -20,23 +20,8 @@ cat flock-schema.sql | mysql -u flock -h localhost --password=flock flocklogbuil
 
 cd ${WORKSPACE}/
 
-git rev-parse HEAD > resources/git-hash.txt
-
-rm -f memcached.pid
-echo "ensure memcache is running"
-if [ "$(pgrep memcached)" != "" ]; then
-    echo "memcached is running"
-else
-    memcached -P memcached.pid &
-fi
 
 lein midje
 
 lein uberjar
 
-if [ -f "memcached.pid" ]; then
-  kill -9 `cat memcached.pid`
-  rm -f memcached.pid
-fi
-
-gzip -c target/uberjar/flock-standalone.jar > flock-${GIT_COMMIT}.jar.gz

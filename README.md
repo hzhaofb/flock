@@ -157,9 +157,6 @@ Provide REST API for
   
   2. worker to register, reserve and complete tasks.
    
-  3. Admin UI to manage the flock cluster.
- 
- 
 ## function
 
 Create function:

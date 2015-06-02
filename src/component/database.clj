@@ -5,18 +5,17 @@
 ;;
 ;; component.jdbc
 ;;
-;; RDS component encapsulate connection.
+;; Database component encapsulate connection.
 ;; dbname is used to lookup config following values
-;; - dbname.rds.adaptor
-;; - dbname.rds.host
-;; - dbname.rds.port
-;; - dbname.rds.database name
-;; - dbname.rds.user
-;; - dbname.rds.password
+;; - dbname.db.adaptor
+;; - dbname.db.host
+;; - dbname.db.port
+;; - dbname.db.database name
+;; - dbname.db.user
+;; - dbname.db.password
 ;; following optional config for c3p0 connection pool
-;; - dbname.rds.max.idle.time.excess.connections
-;; - dbname.rds.max.idle
-;; TODO change rds to database
+;; - dbname.db.max.idle.time.excess.connections
+;; - dbname.db.max.idle
 
 (ns component.database
   (:require [com.stuartsierra.component :as component]
@@ -27,9 +26,9 @@
 
 (defn- get-conf-val
   ([dbname conf key]
-    (get conf (str dbname ".rds." key) nil))
+    (get conf (str dbname ".db." key) nil))
   ([dbname conf key not-found]
-    (get conf (str dbname ".rds." key) not-found)))
+    (get conf (str dbname ".db." key) not-found)))
 
 (defn- get-db-spec
   [dbname conf]
@@ -55,12 +54,12 @@
 
 
 (defn get-conn
-  "get the connection from RDSComponent that can be used in queries.
+  "get the connection from DBComponent that can be used in queries.
    User of this component should only invoke on this public API."
-  [rdscomp]
-  (get rdscomp :conn))
+  [dbcomp]
+  (get dbcomp :conn))
 
-(defrecord RDSComponent [dbname core conn]
+(defrecord DBComponent [dbname core conn]
   component/Lifecycle
 
   (start [this]
@@ -73,11 +72,11 @@
   (stop [this]
     (if-let [c (get-conn this)]
       (.close (:datasource c)))
-    (log/info "stopped RDScomponent" dbname)
+    (log/info "stopped DBcomponent" dbname)
     (assoc this :conn nil)))
 
 (defn new-database
   "create a new database component for a given db name. "
   [dbname]
   (log/info "Creating new db" dbname)
-  (map->RDSComponent {:dbname dbname}))
+  (map->DBComponent {:dbname dbname}))

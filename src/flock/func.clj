@@ -6,8 +6,6 @@
 ;; flock.func
 ;; func defines the method and settings of a group of tasks
 ;; including: fid, lang, function name, settings
-;; todo remove memcache
-
 (ns flock.func
   (:require [clojure.java.jdbc :as jdbc]
             [component.webservice :refer [WebService]]
@@ -16,16 +14,11 @@
             [ring.middleware.keyword-params :refer [wrap-keyword-params]]
             [base.rest-util :refer [json-response echo]]
             [com.stuartsierra.component :as component]
-            [component.memcache :as mc]
             [flock.environment :as environ]
-            [flock.util :refer [mydb mycache]]
+            [flock.util :refer [mydb]]
             [base.mysql :refer :all]
             [compojure.core :as cc])
   (:import (com.mysql.jdbc.exceptions.jdbc4 MySQLIntegrityConstraintViolationException)))
-
-(defn to-cache-key
-  [fid]
-  (str "flk-fn-" fid))
 
 (defn- get-func-by-name
   "get function by env and name"
@@ -47,34 +40,27 @@
                    (jdbc/insert! (mydb comp) :func)
                    (first)
                    (:generated_key))]
-      ; also delete the cache key in case old cached
-      ; (mostly for test case)
-      (mc/delete-val (mycache comp) (to-cache-key fid))
       (assoc func :fid fid :eid eid))
     (catch MySQLIntegrityConstraintViolationException ex
       (-> (get-func-by-name comp (:env func) (:name func))
           (assoc :msg "func already exists:" )))))
 
-(defn- get-func-cache
-  [comp fid]
-  (mc/get-val (mycache comp) (to-cache-key fid)))
+(def func-cache (create-ttl-cache 5000))
 
 (defn- get-func-db
   [comp fid]
   (let [db (mydb comp)
-        cache (mycache comp)
-        cache-key (to-cache-key fid)
         sql "select f.*, e.name as env
             from func f join environment e on f.eid = e.eid
             where fid=?"]
     (->> (jdbc/query db [sql fid])
-         (first)
-         (mc/set-val cache cache-key 60))))
+         (first))))
 
 (defn get-func
   [comp fid]
-  (or (get-func-cache comp fid)
-      (get-func-db comp fid)))
+  (or (get-cache-value func-cache fid)
+      (->> (get-func-db comp fid)
+           (set-cache-value! func-cache fid))))
 
 (defn update-func
   "can only update settings."
@@ -86,7 +72,7 @@
               ["fid=?" fid])]
     (if (= '(1) res)
       (do
-        (mc/delete-val (mycache comp) (to-cache-key fid))
+        (set-cache-value! func-cache fid nil)
         {:msg "func settings updated"})
       (throw (Exception. (str "func is not found for fid=" fid))))))
 

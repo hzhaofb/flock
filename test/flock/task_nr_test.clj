@@ -40,7 +40,7 @@
            task  => result-task-nr2
            (:short_key task) =not=> (:task_key task))))
 
-(facts "No Resource control reserve-task and compete-task test"
+(facts "test reserve-task and compete-task test"
        (fact
          (create-task (task-comp) test-task1)
          (create-task (task-comp) test-task2)
@@ -80,7 +80,7 @@
          (get-task-by-id (task-comp) 2) => nil))
 
 
-(fact "No Resource control reserve-task tests"
+(fact "Test reserve-task tests"
       (fact
         ; create another task with same resource as test-task but fid=2
         (create-task (task-comp) test-task1)

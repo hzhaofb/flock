@@ -9,26 +9,22 @@
 
 (ns flock.util
   (:require [component.core :refer [cfg]]
-            [component.database :as rdb]
+            [component.database :as database]
             [base.util :as util]))
 
 (defn mydb
   "can be used by a component which has :flock-db dependency"
   [comp]
-  (rdb/get-conn (get comp :flock-db)))
+  (database/get-conn (get comp :flock-db)))
 
 (defn mylogdb
   [comp]
-  (rdb/get-conn (get comp :flocklog-db)))
+  (database/get-conn (get comp :flocklog-db)))
 
 (defn myreplicadb
   "can be used by a component which has :flockreplica-db dependency"
   [comp]
-  (rdb/get-conn (get comp :flockreplica-db)))
-
-(defn mycache
-  [comp]
-  (get comp :memcache))
+  (database/get-conn (get comp :flockreplica-db)))
 
 (defn get-config-int
   [comp name default]

@@ -5,7 +5,7 @@
             [midje.sweet :refer :all]
             [flock.func :refer :all]
             [com.stuartsierra.component :as component]
-            [component.database :as rds]
+            [component.database :as database]
             [component.core :as core]
             [flock.tasklog :as tasklog]
             [flock.worker :as worker]
@@ -15,7 +15,6 @@
             [flock.func :as func]
             [component.health :as health]
             [component.http-kit :as http-kit]
-            [component.memcache :as memcache]
             [flock.system :as system]
             [clojure.tools.logging :as log]))
 
@@ -24,20 +23,20 @@
   {"flock.worker.heartbeat" "1"
    "flock.worker.max.skipped.heartbeats" "1"
    "flock.worker.monitor.cycle.sec" "1000000"
-   "flock.rds.adapter" "mysql"
-   "flock.rds.port" "3306"
-   "flock.rds.timeout" "5000"
-   "flock.rds.host" "localhost"
-   "flock.rds.database" "flocktest"
-   "flock.rds.user" "root"
-   "flock.rds.password" "root"
-   "flocklog.rds.adapter" "mysql"
-   "flocklog.rds.port" "3306"
-   "flocklog.rds.timeout" "5000"
-   "flocklog.rds.host" "localhost"
-   "flocklog.rds.database" "flocklogtest"
-   "flocklog.rds.user" "root"
-   "flocklog.rds.password" "root"})
+   "flock.db.adapter" "mysql"
+   "flock.db.port" "3306"
+   "flock.db.timeout" "5000"
+   "flock.db.host" "localhost"
+   "flock.db.database" "flocktest"
+   "flock.db.user" "root"
+   "flock.db.password" "root"
+   "flocklog.db.adapter" "mysql"
+   "flocklog.db.port" "3306"
+   "flocklog.db.timeout" "5000"
+   "flocklog.db.host" "localhost"
+   "flocklog.db.database" "flocklogtest"
+   "flocklog.db.user" "root"
+   "flocklog.db.password" "root"})
 
 (defn test-system
   []
@@ -79,8 +78,6 @@
 (defn func-comp [] (get (tsys) :func-comp))
 
 (defn env-comp [] (get (tsys) :env-comp))
-
-(defn cache-comp [] (get (tsys) :memcache))
 
 (defn set-test-config!
   [config-map]
@@ -152,9 +149,9 @@
 
 ; conveneint methods
 (defn db []
-  (rds/get-conn (get (tsys) :flock-db)))
+  (database/get-conn (get (tsys) :flock-db)))
 (defn logdb []
-  (rds/get-conn (get (tsys) :flocklog-db)))
+  (database/get-conn (get (tsys) :flocklog-db)))
 
 (def test-name-atom (atom nil))
 (defn set-test-name

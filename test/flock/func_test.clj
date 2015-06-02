@@ -1,10 +1,10 @@
 (ns flock.func-test
   (:require [midje.sweet :refer :all]
             [clojure.java.jdbc :as jdbc]
+            [base.util :as util]
             [flock.func :refer :all]
             [flock.environment :refer :all]
-            [flock.test-system :refer :all]
-            [component.memcache :as mc]))
+            [flock.test-system :refer :all]))
 
 (set-test-name *ns*)
 
@@ -48,8 +48,8 @@
 
 (facts "valid tid test caching"
        (fact
-         (mc/delete-val (cache-comp) (to-cache-key 1))
-         (mc/delete-val (cache-comp) (to-cache-key 2))
+         (util/set-cache-value! func-cache 1 nil)
+         (util/set-cache-value! func-cache 2 nil)
          (create-func (func-comp) test-func1)
          (-> (get-func (func-comp) 1)
              (dissoc :modified))

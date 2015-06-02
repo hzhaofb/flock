@@ -117,14 +117,8 @@
 (defn- release-task
   "complete a task because worker failed to update heartbeat, task in form of {:tid tid :eta eta}"
   [comp {tid :tid wid :wid rid :rid}]
-  (jdbc/with-db-transaction
-    [txn (mydb comp)]
-    (when (and rid (> rid 0))
-      (jdbc/execute! txn ["call ensure_res_usage()"]))
-    (jdbc/update! txn :schedule {:wid 0} [ "tid=? and wid=?" tid wid])
-    (when (and rid (> rid 0))
-      (jdbc/execute! txn ["call update_res_usage(?, -1)" rid]))
-    (log/info "expire task" tid "wid" wid)))
+  (jdbc/update! (mydb comp) :schedule {:wid 0} [ "tid=? and wid=?" tid wid])
+  (log/info "expire task" tid "wid" wid))
 
 (defn cleanup-worker
   "Called when worker shutdown or presumed dead (indicated by event).

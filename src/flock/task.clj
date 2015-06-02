@@ -288,7 +288,7 @@
 
 (defn- reserve-task-impl
   "see reserved-task using task-cache. If we have a task candidate, use it
-  to update the wid given the record is not changed and the resource is not maxed.
+  to update the wid given the record is not changed.
   If no row updated, try other candidates."
   [comp wid eid]
   (ensure-task-cache comp eid)
@@ -341,20 +341,17 @@
     :deleted when no new_eta
     :not-reserved when wid didn't reserve tid"
   [db tid wid new_eta]
-  (jdbc/with-db-transaction
-    ;; todo do we need the transaction?
-    [txn db]
-    (if (and (some? new_eta) (pos? new_eta))
-      ;reschedule task to new_eta and indicate if successful
-      (if (= '(0)
-             (jdbc/update! txn :schedule {:wid 0 :eta new_eta}
-                           ["tid=? and wid=?" tid wid]))
-        :not-reserved
-        :rescheduled)
-      ; no new eta, delete schedule and task
-      (if (= '(0) (jdbc/delete! txn :schedule ["tid=? and wid=?" tid wid]))
-        :not-reserved
-        :deleted))))
+  (if (and (some? new_eta) (pos? new_eta))
+    ;reschedule task to new_eta and indicate if successful
+    (if (= '(0)
+           (jdbc/update! db :schedule {:wid 0 :eta new_eta}
+                         ["tid=? and wid=?" tid wid]))
+      :not-reserved
+      :rescheduled)
+    ; no new eta, delete schedule and task
+    (if (= '(0) (jdbc/delete! db :schedule ["tid=? and wid=?" tid wid]))
+      :not-reserved
+      :deleted)))
 
 (defn- complete-result-to-msg
   [result tid wid new_eta]
