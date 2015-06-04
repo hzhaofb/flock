@@ -4,18 +4,13 @@
             [flock.worker :refer :all]
             [flock.task :refer :all]
             [flock.func :refer :all]
-            [flock.tasklog :refer :all]
             [flock.server :refer :all]
             [flock.test-system :refer :all]))
 
 (set-test-name *ns*)
 
 (namespace-state-changes
-  [(before :facts
-           (do (setup-fact)
-               (-> (merge test-local-config log-true
-                          {"flock.worker.monitor.cycle.sec" "1"})
-                   (set-test-config!))))
+  [(before :facts (setup-fact))
    (after :facts (teardown-test))])
 
 (facts "test worker CRUD both positive and negative cases"
@@ -41,12 +36,7 @@
 
          ; test stop worker
          (stop-worker (worker-comp) 1)
-         (get-worker-by-id (worker-comp) 1) => nil
-
-         ; test worker log
-         (let [logs (:logs (list-worker-log (worker-comp) 1))]
-           (:event (first logs)) => "START"
-           (:event (second logs)) => "SHUTDOWN")))
+         (get-worker-by-id (worker-comp) 1) => nil))
 
 (facts "test-monitor-worker and task is release after worker expires"
        (fact
@@ -60,18 +50,11 @@
          ; let worker expire
          (Thread/sleep 4000)
          (let [worker (get-worker-by-id (worker-comp) 1)
-               hb_resp(update-heartbeat (worker-comp) 1 nil)
-               logs (:logs (list-worker-log (worker-comp) 1))]
+               hb_resp(update-heartbeat (worker-comp) 1 nil)]
            worker => nil
            hb_resp => {:msg "worker 1 is not found"
                        :admin_cmd "SHUTDOWN"}
-           (:event (second logs)) => "EXPIRED"
-           (:tids (second logs)) => "1")
-         (-> (list-tasklog (tasklog-comp) 1)
-             (:logs)
-             (first)
-             (select-keys [:event_type :wid :error]))
-         => {:event_type "X" :wid 1 :error "worker expired"}
+           )
          ; Worker 1 expired and so task should be ready for reserve
          ; worker 2 should be able to reserve the task
          (start-worker (worker-comp) "1.1.1.2" 1 "java")

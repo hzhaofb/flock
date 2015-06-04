@@ -15,8 +15,6 @@
             [compojure.route :as cr]
             [component.core :refer [cfg]]
             [ring.middleware.json :refer [wrap-json-body wrap-json-params wrap-json-response]]
-            [metrics.ring.expose :refer [expose-metrics-as-json]]
-            [metrics.ring.instrument :refer [instrument]]
             [org.httpkit.server :refer [run-server]]
             [clojure.tools.logging :as log]
             [flock.util :as util])
@@ -49,14 +47,12 @@
                   (filter web-service?) ; filter just those with WebService
                   (map ws/get-routes)   ; get the routes from those
                   (apply cc/routes)     ; and turn into one handler
-                  (instrument)         ; wrapped with instrumentation
                   )
              global-routes))            ; and add on global routes
 
 (defn- wrap-common-middleware
   [app]
   (-> app
-      (expose-metrics-as-json)
       (wrap-keyword-params)
       (wrap-params)
       ; following only apply if request content-type is json

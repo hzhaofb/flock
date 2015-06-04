@@ -21,33 +21,24 @@
             [clojure.tools.logging :as log]
             [component.webservice :refer [WebService]]
             [com.stuartsierra.component :as component]
-            [pallet.thread-expr :refer :all]
             [ring.middleware.json :refer [wrap-json-response]]
             [flock.func :as func]
             [flock.util :refer [mydb get-config-int]]
-            [flock.tasklog :refer [write-tasklog]]
             [flock.worker :refer [get-worker-by-id]]
             [flock.server :refer [get-slot-info]]
             [base.util :refer :all]
             [base.rest-util :refer [json-response echo]]
-            [compojure.core :as cc]
-            [metrics.timers :refer [timer time!]]
-            [metrics.histograms :refer [histogram update!]]
-            [metrics.meters :refer [meter mark!]]
-            [metrics.gauges :refer [gauge-fn]]
-            [flock.metrics :as metrics]
-            [base.util :as util])
-  (:import (com.mysql.jdbc.exceptions.jdbc4 MySQLIntegrityConstraintViolationException)
-           (clojure.lang PersistentQueue)))
+            [compojure.core :as cc])
+  (:import (clojure.lang PersistentQueue)
+           (java.sql SQLException)))
 
 (defn from-db
   "return map with params converted from str to map"
   [task]
-  (if (some? task)
-    (-> task
-        (try-update :params json/parse-string)
-        (when-> (nil? (task :task_key))
-                (assoc :task_key (task :short_key))))))
+  (let [task (try-update task :params json/parse-string)]
+    (if (nil? (:task_key task))
+      (some-> task (assoc :task_key (:short_key task)))
+      task)))
 
 (defn- list-tasks
   [db where args]
@@ -99,7 +90,7 @@
            (first)
            (:generated_key)
            (assoc task :tid))
-      (catch MySQLIntegrityConstraintViolationException ex
+      (catch SQLException ex
         ; We have unique constraint on fid and short_key
         ; Get the tid with fid and short_key
         (jdbc/update! db :task setters ["fid=? and short_key=?" fid short_key])
@@ -116,7 +107,7 @@
   [db task]
   (try
     (jdbc/insert! db :schedule (select-keys task [:tid :eta :eid]))
-    (catch MySQLIntegrityConstraintViolationException ex
+    (catch SQLException ex
       (jdbc/update! db :schedule
                     (select-keys task [:eta])
                     ["tid=?" (task :tid)])))
@@ -297,11 +288,7 @@
       (if (and (take-candidate? comp cand)
                (= 1 (reserve-task-db comp wid cand)))
         ; get the entire task by id
-        (let [task (get-task-by-id comp (:tid cand))
-              tlog (assoc task :event_type "S")]
-          (write-tasklog (get comp :tasklog-comp) tlog)
-          (mark! metrics/reserved-meter)
-          task)
+        (get-task-by-id comp (:tid cand))
         (recur (dequeue-candidate-cache comp eid))))))
 
 (defn reserve-task
@@ -309,17 +296,15 @@
    After worker complete the task, it must call complete-task with new with :new_eta.
    return nil if no task is due."
   [comp wid]
-  (time!
-    metrics/reserve-db-timer
-    (let [wid (to-int wid "wid")
-          worker-comp (get comp :worker-comp)
-          worker (get-worker-by-id worker-comp wid)
-          _ (assert (some? worker) (str "worker " wid " not registered") )
-          eid (worker :eid)]
-      ; can't use some->> because it evaluate the reserve-task
-      ; and log-time-info will not give the right timing
-      (->> (reserve-task-impl comp wid eid)
-           (log-time-info #(str "wid=" wid " got tid=" (:tid %)))))))
+  (let [wid (to-int wid "wid")
+        worker-comp (get comp :worker-comp)
+        worker (get-worker-by-id worker-comp wid)
+        _ (assert (some? worker) (str "worker " wid " not registered") )
+        eid (worker :eid)]
+    ; can't use some->> because it evaluate the reserve-task
+    ; and log-time-info will not give the right timing
+    (->> (reserve-task-impl comp wid eid)
+         (log-time-info #(str "wid=" wid " got tid=" (:tid %))))))
 
 (defn reserve-tasks
   "reserve tasks for a given worker upto the limit."
@@ -332,7 +317,6 @@
                    (take limit))
         tcount (count tasks)]
     (log/info "wid" wid "asked" limit "got" tcount)
-    (metrics/update-worker-slack! wid (- limit tcount))
     tasks))
 
 (defn- complete-task-db
@@ -360,7 +344,10 @@
     :deleted (str "no new_eta, task tid=" tid " deleted")
     :not-reserved (str "task tid=" tid " is not reserved by worker wid=" wid)))
 
-(defn- complete-task-impl
+(defn complete-task
+  "report task complete. task-report should include
+   {:wid wid :tid tid :eta eta :new_eta new_eta (optional) :error (if failed)
+   If :new_eta is not nil, reschedule the task"
   [comp task-report]
   (let [wid (to-int (:wid task-report) "wid")
         _ (assert (pos? wid) "invalid wid")
@@ -373,43 +360,14 @@
         new_eta (:new_eta task-report)
         new_eta (if (some? new_eta)
                   (to-int new_eta "new_eta"))
-        start_time (:start_time task-report)
-        start_time (if (some? start_time)
-                     (to-int start_time "start_time"))
-        db (mydb comp)
-        log-comp (get comp :tasklog-comp)
-        error (:error task-report)
-        tlog {:wid wid :tid tid
-              :eta eta :new_eta new_eta
-              :start_time start_time
-              :error error :event_type "C"}]
-    (if error (mark! metrics/error-meter))
-    (when start_time
-      (update! metrics/queuing-time (- start_time eta))
-      (update! metrics/processing-time (- (util/current-epoch) start_time)))
+        db (mydb comp)]
     (let [result
           (->> (complete-task-db db tid wid new_eta)
                (log-time-info #(str "wid=" wid " completes tid=" tid " " %)))
           msg (complete-result-to-msg result tid wid new_eta)]
       (if (= :not-reserved result)
         (throw (Exception. msg))
-        (do (write-tasklog log-comp tlog)
-            {:msg msg})))))
-
-(defn complete-task
-  "report task complete. task-report should include
-  {:wid wid :tid tid :eta eta :new_eta new_eta (optional) :error (if failed)
-  If :new_eta is not nil, reschedule the task"
-  [comp task-report]
-  (time!
-    metrics/complete-db-timer
-    (try
-      (let [result (complete-task-impl comp task-report)]
-        (mark! metrics/completed-meter)
-        result)
-      (catch Exception ex
-        (mark! metrics/error-meter)
-        (throw ex)))))
+        {:msg msg}))))
 
 (defn delete-task
   "delete the task with tid.
@@ -502,8 +460,7 @@
     ))
 
 (defrecord TaskComponent
-           [core flock-db worker-comp
-            func-comp tasklog-comp resource-comp]
+           [core flock-db worker-comp]
   component/Lifecycle
   (start [this]
     (let [comp (assoc this :task-cache (atom {}))

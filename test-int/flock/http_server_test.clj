@@ -21,8 +21,4 @@
 
          (get-in (rest-post url "pworker" {:test "test worker"})
                  [:params :test])
-         => "test worker"
-
-         (get-in (rest-post url "ptasklog" {:test "test tasklog"})
-                 [:params :test])
-         => "test tasklog"))
+         => "test worker"))

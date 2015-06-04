@@ -16,8 +16,6 @@ lein install
 cd ${WORKSPACE}/sql
 cat flock-schema.sql | mysql -u flock -h localhost --password=flock flockbuilder
 
-cat flock-schema.sql | mysql -u flock -h localhost --password=flock flocklogbuilder
-
 cd ${WORKSPACE}/
 
 

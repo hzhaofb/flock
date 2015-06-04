@@ -18,7 +18,7 @@
             [flock.util :refer [mydb]]
             [base.mysql :refer :all]
             [compojure.core :as cc])
-  (:import (com.mysql.jdbc.exceptions.jdbc4 MySQLIntegrityConstraintViolationException)))
+  (:import (java.sql SQLException)))
 
 (defn- get-func-by-name
   "get function by env and name"
@@ -41,7 +41,7 @@
                    (first)
                    (:generated_key))]
       (assoc func :fid fid :eid eid))
-    (catch MySQLIntegrityConstraintViolationException ex
+    (catch SQLException ex
       (-> (get-func-by-name comp (:env func) (:name func))
           (assoc :msg "func already exists:" )))))
 

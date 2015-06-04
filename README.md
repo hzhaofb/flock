@@ -224,14 +224,10 @@ Worker should:
   
   2. create database flockopen
   
-  3. create database flocklogopen
-  
   4. under flock/sql dir
   
       > cat flock-schema.sql | mysql -u root -h localhost --password=root flockopen
             
-      > cat flock-log-schema.sql | mysql -u root -h localhost --password=root flocklogopen
-  
   5. start server
   
       > java -Dlog4j.configuration=file:./log4j.properties -jar target/uberjar/flock-standalone.jar  &

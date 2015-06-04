@@ -20,7 +20,7 @@
             [com.stuartsierra.component :as component]
             [flock.util :refer [mydb get-config-int]]
             [component.scheduler :refer [schedule-fixed-delay]])
-  (:import (com.mysql.jdbc.exceptions.jdbc4 MySQLIntegrityConstraintViolationException)))
+  (:import (java.sql SQLException)))
 
 ; public API
 (defn get-slot-info
@@ -53,7 +53,7 @@
         pid (util/get-pid)]
     (try
       (mysql/insert-row (mydb comp) :server {:ip ip :pid pid})
-      (catch MySQLIntegrityConstraintViolationException ex
+      (catch SQLException ex
         (-> (jdbc/query (mydb comp) ["select sid from server where ip=? and pid=?" ip pid])
             (first)
             (:sid))))))

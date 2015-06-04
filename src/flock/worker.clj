@@ -16,15 +16,13 @@
             [base.rest-util :refer [json-response echo]]
             [component.webservice :refer [WebService]]
             [component.scheduler :refer [schedule-fixed-delay]]
-            [flock.tasklog :refer [write-tasklog]]
             [flock.environment :refer [get-env-by-id get-env-by-name]]
             [flock.util :refer [mydb get-config-int]]
             [component.database :refer [get-conn]]
             [base.mysql :refer :all]
             [com.stuartsierra.component :as component]
             [compojure.core :as cc])
-  (:import (com.mysql.jdbc.exceptions.jdbc4
-           MySQLIntegrityConstraintViolationException)))
+  (:import (java.sql SQLException)))
 
 (defn- convert-heartbeat [worker]
   (if-let [hb (:heartbeat worker)]
@@ -73,7 +71,7 @@
         (insert-row db :worker_log (assoc worker :event "START"))
         (log/info "created worker" worker)
         (before-response comp worker))
-      (catch MySQLIntegrityConstraintViolationException ex
+      (catch SQLException ex
         (log/info "Worker at ip=" ip "pid=" pid "alreay registered")
         (-> (get-worker-by-ip-pid comp ip pid)
             (assoc :msg "worker already registered"))))))
@@ -103,17 +101,6 @@
     (do (log/info "Worker" wid "updated wstatus " wstatus " and heartbeat")
         (get-worker-by-id comp wid))))
 
-(defn- log-task-expire
-  [comp wid tids]
-  (doseq [tid (flatten tids)] ; use list comprehension
-    (if tid
-      (let [tlog {:wid wid
-                  :tid tid
-                  :error "worker expired"
-                  :event_type "X"}
-            log-comp (get comp :tasklog-comp)]
-        (write-tasklog log-comp tlog)))))
-
 (defn- release-task
   "complete a task because worker failed to update heartbeat, task in form of {:tid tid :eta eta}"
   [comp {tid :tid wid :wid rid :rid}]
@@ -136,7 +123,6 @@
                      (join)
                      (util/trunc 1000))
         worker-log (assoc worker :event event :tids tids-str)]
-    (log-task-expire comp wid tids)
     (jdbc/insert! db :worker_log worker-log)
     (jdbc/delete! db :worker ["wid=?" wid])
     (jdbc/update! db :schedule {:wid 0} ["wid in (?, ?)" wid (- 0 wid)])))
@@ -209,8 +195,7 @@
              (json-response req echo req))))
 
 ; Domain model component for workers
-(defrecord WorkerComponent [core scheduler flock-db
-                            tasklog-comp env-comp]
+(defrecord WorkerComponent [core scheduler flock-db env-comp]
   component/Lifecycle
 
   (start [this]

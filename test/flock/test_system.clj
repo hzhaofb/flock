@@ -7,7 +7,6 @@
             [com.stuartsierra.component :as component]
             [component.database :as database]
             [component.core :as core]
-            [flock.tasklog :as tasklog]
             [flock.worker :as worker]
             [flock.task :as task]
             [flock.server :as server]
@@ -66,8 +65,6 @@
 
 
 (defn core [] (get (tsys) :core))
-
-(defn tasklog-comp [] (get (tsys) :tasklog-comp))
 
 (defn worker-comp [] (get (tsys) :worker-comp))
 
@@ -150,8 +147,6 @@
 ; conveneint methods
 (defn db []
   (database/get-conn (get (tsys) :flock-db)))
-(defn logdb []
-  (database/get-conn (get (tsys) :flocklog-db)))
 
 (def test-name-atom (atom nil))
 (defn set-test-name
@@ -169,9 +164,7 @@
     (jdbc/execute! (db) [(str "truncate " table)])
     (log/info "truncated" table))
   (server/start-server (server-comp))
-  (set-test-config! test-local-config)
-  ; clean up flocklogtest
-  (jdbc/execute! (logdb) ["truncate task_log"]))
+  (set-test-config! test-local-config))
 
 (defn teardown-test
   ;nothing for now

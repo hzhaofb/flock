@@ -17,15 +17,6 @@
   [comp]
   (database/get-conn (get comp :flock-db)))
 
-(defn mylogdb
-  [comp]
-  (database/get-conn (get comp :flocklog-db)))
-
-(defn myreplicadb
-  "can be used by a component which has :flockreplica-db dependency"
-  [comp]
-  (database/get-conn (get comp :flockreplica-db)))
-
 (defn get-config-int
   [comp name default]
   (-> (cfg comp)
