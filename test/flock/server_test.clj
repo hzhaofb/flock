@@ -23,7 +23,7 @@
 (facts "test-monitor-server and server expiration"
        (fact
          ; start server
-         (-> (merge test-local-config log-true
+         (-> (merge test-local-config
                     {"flock.server.monitor.cycle.sec" "1"
                      "flock.server.heartbeat" "1"
                      "flock.server.max.skipped.heartbeats" "1"})

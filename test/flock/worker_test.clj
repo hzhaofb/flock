@@ -40,6 +40,11 @@
 
 (facts "test-monitor-worker and task is release after worker expires"
        (fact
+         (-> (merge test-local-config
+                    {"flock.worker.monitor.cycle.sec" "1"
+                     "flock.worker.heartbeat" "1"
+                     "flock.worker.max.skipped.heartbeats" "1"})
+             (set-test-config!))
          (start-monitor (worker-comp))
          (start-server (server-comp))
          (start-worker (worker-comp) "1.1.1.1" 2 "java")

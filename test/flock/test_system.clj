@@ -51,19 +51,6 @@
         (log/error ex "tsys start failure"))))
   @sysa)
 
-(def log-false {
-                "flock.log.task.start" "false"
-                "flock.log.task.expire" "false"
-                "flock.log.task.complete" "false"
-                })
-
-(def log-true {
-               "flock.log.task.start" "true"
-               "flock.log.task.expire" "true"
-               "flock.log.task.complete" "true"
-               })
-
-
 (defn core [] (get (tsys) :core))
 
 (defn worker-comp [] (get (tsys) :worker-comp))

@@ -9,6 +9,7 @@
                  [org.clojure/java.jdbc "0.3.6"]
                  [mysql/mysql-connector-java "5.1.34"]
                  [org.clojure/tools.logging "0.3.1"]
+                 [org.slf4j/slf4j-log4j12 "1.7.7"]
                  [clojurewerkz/propertied "1.2.0"]
                  [c3p0/c3p0 "0.9.1.2"]
                  [cheshire "5.4.0"]

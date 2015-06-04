@@ -29,5 +29,3 @@
   [flock.task :refer :all]
   [flock.server :refer :all])
  (:import [com.mchange.v2.c3p0.ComboPooledDataSource]))
-
-(reloaded.repl/set-init! flock.system/dev-system)

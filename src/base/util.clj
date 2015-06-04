@@ -4,12 +4,10 @@
 ;; base.util
 ;; general utility functions
 
-
 (ns base.util
   (:require [clojure.java.io :refer [as-url]]
             [clojure.string :as string]
             [clojure.tools.logging :as log]
-            [clojure.string :as str]
             [clojure.core.cache :as cache])
   (:import (java.security MessageDigest)
            (java.net InetAddress)
@@ -35,13 +33,6 @@
   (assert-some m ks)
   (doseq [[k v] (select-keys m ks)]
     (assert (pos? v) (str "invalid " k)))))
-
-(defn to-int-default
-  ([val default]
-   (try
-     (Integer. val)
-     (catch Exception e
-       default))))
 
 (defn to-int
   "parse input to integer."
@@ -136,13 +127,6 @@
   [e coll]
   (-> (indexes-of e coll)
       (first)))
-
-(defn get-int-list
-  "read list of ints from config map in form of property-name=1,2,4"
-  [conf name]
-  (->> (str/split (get conf name) #"[, ]")
-       (filter not-empty)
-       (map to-int)))
 
 ; local TTL cache using clojure.core.cache and provide easier interface
 (defn create-ttl-cache

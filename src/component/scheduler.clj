@@ -20,14 +20,6 @@
   (-> (get comp :scheduled_threadpool)
       (.scheduleWithFixedDelay command init_delay delay time_unit)))
 
-(defn schedule-fixed-rate
-  "schedule execution of command every fixed delay time_unit (default TimeUnit/SECOND)
-  with initial delay (default 0)"
-  [comp {command :command init_delay :init_delay time_unit :time_unit period :period
-         :or   {time_unit TimeUnit/SECONDS init_delay 0}}]
-  (-> (get comp :scheduled_threadpool)
-      (.scheduleWithFixedRate command init_delay period time_unit)))
-
 (defrecord SchedulerComponent []
   component/Lifecycle
 
