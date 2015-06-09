@@ -16,9 +16,9 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
             [base.util :as util]
-            [base.mysql :as mysql]
             [com.stuartsierra.component :as component]
-            [flock.util :refer [mydb get-config-int]]
+            [component.database :refer [mydb insert-row]]
+            [component.core :refer [get-config-int]]
             [component.scheduler :refer [schedule-fixed-delay]])
   (:import (java.sql SQLException)))
 
@@ -52,7 +52,7 @@
   (let [ip (util/get-ip)
         pid (util/get-pid)]
     (try
-      (mysql/insert-row (mydb comp) :server {:ip ip :pid pid})
+      (insert-row (mydb comp) :server {:ip ip :pid pid})
       (catch SQLException ex
         (-> (jdbc/query (mydb comp) ["select sid from server where ip=? and pid=?" ip pid])
             (first)

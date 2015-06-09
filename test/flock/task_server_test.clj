@@ -10,13 +10,13 @@
   (:require [midje.sweet :refer :all]
             [flock.test-system :refer :all]
             [base.util :refer :all]
+            [component.database :refer :all]
             [flock.worker :refer [start-worker]]
             [flock.func :refer [create-func]]
             [flock.task :refer :all]
             [flock.server :refer [start-server
-                                            update-server-heartbeat
-                                            refresh-sid-list]]
-            [base.mysql :as mysql]))
+                                  update-server-heartbeat
+                                  refresh-sid-list]]))
 
 (set-test-name *ns*)
 
@@ -32,7 +32,7 @@
        ; we need to hack another server component with different ip pid
        (let [svr-comp1 (start-server (server-comp))
              task-comp1 (assoc (task-comp) :server-comp svr-comp1)]
-         (->> (mysql/insert-row (db) :server {:ip "1.1.1.1" :pid 2})
+         (->> (insert-row (db) :server {:ip "1.1.1.1" :pid 2})
               (swap! (:state svr-comp1) assoc :sid))
          (refresh-sid-list svr-comp1)
          (refresh-sid-list (server-comp))
@@ -58,7 +58,7 @@
        ; we need to hack another server component with different ip pid
        (let [svr-comp1 (start-server (server-comp))
              task-comp1 (assoc (task-comp) :server-comp svr-comp1)]
-         (->> (mysql/insert-row (db) :server {:ip "1.1.1.1" :pid 2})
+         (->> (insert-row (db) :server {:ip "1.1.1.1" :pid 2})
               (swap! (:state svr-comp1) assoc :sid))
          (refresh-sid-list svr-comp1)
          (refresh-sid-list (server-comp))

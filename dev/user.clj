@@ -25,7 +25,6 @@
   [flock.test-system :refer :all]
   [flock.worker :refer :all]
   [flock.func :refer :all]
-  [base.mysql :refer :all]
   [flock.task :refer :all]
   [flock.server :refer :all])
  (:import [com.mchange.v2.c3p0.ComboPooledDataSource]))

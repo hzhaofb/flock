@@ -1,6 +1,5 @@
 (ns flock.worker-test
   (:require [midje.sweet :refer :all]
-            [clojure.java.jdbc :as jdbc]
             [flock.worker :refer :all]
             [flock.task :refer :all]
             [flock.func :refer :all]

@@ -12,8 +12,6 @@
             [flock.server :as server]
             [base.util :refer :all]
             [flock.func :as func]
-            [component.health :as health]
-            [component.http-kit :as http-kit]
             [flock.system :as system]
             [clojure.tools.logging :as log]))
 
@@ -165,7 +163,7 @@
 
 ; for integration testing vars
 (def url
-  (->> (get-in (tsys) [:http-server :port])
+  (->> (get-in (tsys) [:rest-api :port])
        (str "http://localhost:")))
 
 (def tworker {:ip "1.1.1.1" :pid 2 :env "java"})

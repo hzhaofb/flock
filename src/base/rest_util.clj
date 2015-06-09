@@ -11,8 +11,6 @@
       (dissoc :async-channel)
       (assoc :body (slurp (:body req)))))
 
-
-
 (defn json-response
   "Takes a function and a list of params,
    apply the function and wraps result to ring response."

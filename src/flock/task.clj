@@ -19,16 +19,14 @@
             [clj-time.coerce :as tcc]
             [cheshire.core :as json]
             [clojure.tools.logging :as log]
-            [component.webservice :refer [WebService]]
             [com.stuartsierra.component :as component]
-            [ring.middleware.json :refer [wrap-json-response]]
             [flock.func :as func]
-            [flock.util :refer [mydb get-config-int]]
+            [component.database :refer [mydb]]
+            [component.core :refer [get-config-int]]
             [flock.worker :refer [get-worker-by-id]]
             [flock.server :refer [get-slot-info]]
             [base.util :refer :all]
-            [base.rest-util :refer [json-response echo]]
-            [compojure.core :as cc])
+            [base.rest-util :refer [json-response echo]])
   (:import (clojure.lang PersistentQueue)
            (java.sql SQLException)))
 
@@ -415,65 +413,14 @@
           {:error "unknown fid"})
         (assoc :fid fid))))
 
-(defn- make-routes
-  [comp]
-  (cc/routes
-    (cc/GET "/worker/:wid/task" [wid :as req]
-            ;; reserves a task for a given worker wid.
-            ;; worker must PUT back with new_eta after complete
-            (json-response req reserve-task comp wid))
-    (cc/GET "/worker/:wid/tasks" [wid limit :as req]
-            ;; reserves tasks upto the limit for a given worker wid.
-            ;; worker must PUT back each task with new_eta after complete
-            (json-response req reserve-tasks comp wid limit))
-    (cc/PUT "/worker/:wid/task/:tid" [wid tid new_eta error :as req]
-            ;; report task complete with new eta.
-            (json-response req complete-task comp (req :params)))
-    (cc/PUT "/task/cache" [:as req]
-            ;; clear task candidate list cache
-            (json-response req reset-task-cache comp))
-    (cc/GET "/task/:tid" [tid :as req]
-            ;; get task with id tid
-            (json-response req get-task-by-id comp tid))
-    (cc/DELETE "/task/:tid" [tid :as req]
-            ;; delete task with id tid
-            (json-response req delete-task comp tid))
-    (cc/GET "/task" [fid task_key :as req]
-            ;; get task with given fid and task_key as query params
-            (json-response req get-task-by-fid-key comp fid task_key))
-    (cc/POST "/task" req
-             ;; create a new task
-             (json-response req create-task comp (req :params)))
-    (cc/PUT "/task/:tid" [tid task_key eta params :as req]
-            ;; update existing task
-            (json-response req update-task comp tid task_key eta params))
-    (cc/GET "/func/:fid/backlog" [fid :as req]
-            ;; get function with id
-            (json-response req list-func-backlog comp fid))
-    (cc/GET "/func/:fid/backlog_count" [fid :as req]
-            ;; get function with id
-            (json-response req count-func-backlog comp fid))
-
-    (cc/POST "/ptask" req
-             ;; post on this endpoint for sanity test
-             (json-response req echo req))
-    ))
-
 (defrecord TaskComponent
            [core flock-db worker-comp]
   component/Lifecycle
   (start [this]
-    (let [comp (assoc this :task-cache (atom {}))
-          routes (->> (make-routes comp)
-                      (wrap-json-response))]
-      (assoc comp :routes routes)))
+    (assoc this :task-cache (atom {})))
 
   (stop [this]
-    this)
-
-  WebService
-  (get-routes [this]
-    (:routes this)))
+    this))
 
 (defn new-task-comp
   []

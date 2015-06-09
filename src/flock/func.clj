@@ -8,16 +8,13 @@
 ;; including: fid, lang, function name, settings
 (ns flock.func
   (:require [clojure.java.jdbc :as jdbc]
-            [component.webservice :refer [WebService]]
             [base.util :refer :all]
             [ring.middleware.json :refer [wrap-json-body wrap-json-params wrap-json-response]]
             [ring.middleware.keyword-params :refer [wrap-keyword-params]]
             [base.rest-util :refer [json-response echo]]
             [com.stuartsierra.component :as component]
             [flock.environment :as environ]
-            [flock.util :refer [mydb]]
-            [base.mysql :refer :all]
-            [compojure.core :as cc])
+            [component.database :refer [mydb]])
   (:import (java.sql SQLException)))
 
 (defn- get-func-by-name
@@ -76,40 +73,14 @@
         {:msg "func settings updated"})
       (throw (Exception. (str "func is not found for fid=" fid))))))
 
-; expose REST endpoints
-(defn- make-routes
-  [comp]
-  (cc/routes
-    (cc/GET "/func/:fid" [fid :as req]
-            ;; get function with id
-            (json-response req get-func comp fid))
-    (cc/POST "/func" req
-             ;; create a new function with specified
-             ;; eid, name, and settings
-             ;; if already exist, return existing func
-             (json-response req create-func comp (req :params)))
-    (cc/PUT "/func/:fid" [fid settings :as req]
-            ;; update function's settings
-            (json-response req update-func comp fid settings))
-    (cc/POST "/pfunc" req
-             ;; post on this endpoint for sanity test
-             (json-response req echo req))
-    ))
-
 ; Declare dependencies
 (defrecord FuncComponent [core flock-db]
   component/Lifecycle
   (start [this]
-    (->> (make-routes this)
-         (wrap-json-response)
-         (assoc this :routes)))
-
-  (stop [this]
     this)
 
-  WebService
-  (get-routes [this]
-    (:routes this)))
+  (stop [this]
+    this))
 
 (defn new-func-comp
   []

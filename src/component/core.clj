@@ -3,19 +3,26 @@
 
 ;; Author: David Creemer
 ;;
-;; component encapsulation of all common "core" services
+;; component encapsulation application name (:app_name) and associated config map (:config)
 
 (ns component.core
   (:require [com.stuartsierra.component :as component]
             [clojure.java.io :as io]
             [clojurewerkz.propertied.properties :as props]
-            [clojure.tools.logging :as log]))
+            [clojure.tools.logging :as log]
+            [base.util :as util]))
 
 (defn cfg
   "return config map for any component with core"
   [comp]
   (-> (get-in comp [:core :config])
       (deref)))
+
+(defn get-config-int
+  [comp name default]
+  (-> (cfg comp)
+      (get name default)
+      (util/to-int)))
 
 (defn set-config!
   "set config with new value on core component"

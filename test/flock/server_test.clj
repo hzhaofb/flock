@@ -12,7 +12,7 @@
             [clojure.java.jdbc :as jdbc]
             [flock.server :refer :all]
             [flock.test-system :refer :all]
-            [base.mysql :as mysql]))
+            [component.database :refer [mydb insert-row]]))
 
 (set-test-name *ns*)
 
@@ -29,8 +29,8 @@
                      "flock.server.max.skipped.heartbeats" "1"})
              (set-test-config!))
          (jdbc/execute! (db) ["truncate server"])
-         (mysql/insert-row (db) :server {:ip "1.1.1.1" :pid 1})
-         (mysql/insert-row (db) :server {:ip "1.1.1.1" :pid 2})
+         (insert-row (db) :server {:ip "1.1.1.1" :pid 1})
+         (insert-row (db) :server {:ip "1.1.1.1" :pid 2})
          (let [comp (start-server (server-comp))]
            (get-slot-info comp) => {:slot 2 :server-count 3}
            ; after 3.5 seconds, the other two server should be cleaned up

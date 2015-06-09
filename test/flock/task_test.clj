@@ -1,17 +1,14 @@
 (ns flock.task-test
   (:require [midje.sweet :refer :all]
             [clojure.java.jdbc :as jdbc]
-            [clj-time.core :as tc]
             [flock.test-system :refer :all]
             [base.util :refer :all]
             [flock.worker :refer [start-worker]]
             [flock.func :refer [create-func]]
             [flock.task :refer :all]
             [flock.server :refer [start-server
-                                            update-server-heartbeat
-                                            refresh-sid-list]]
-            [base.mysql :as mysql]
-            [base.util :as util]))
+                                  update-server-heartbeat
+                                  refresh-sid-list]]))
 
 (set-test-name *ns*)
 (namespace-state-changes

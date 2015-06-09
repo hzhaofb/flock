@@ -9,15 +9,14 @@
   (:require
     [com.stuartsierra.component :as component]
     [component.core :as core]
-    [component.http-kit :as http-kit]
-    [component.health :as health]
     [component.database :as database]
     [component.scheduler :as scheduler]
     [flock.server :as server]
     [flock.environment :as environment]
     [flock.task :as task]
     [flock.func :as func]
-    [flock.worker :as worker]))
+    [flock.worker :as worker]
+    [flock.rest-api :as rest-api]))
 
 (defn prod-system []
   (component/system-map
@@ -50,14 +49,11 @@
                                       :func-comp
                                       :scheduler
                                       :env-comp])
-    :health-service (component/using (health/new-health-service)
-                                     [:core])
-    :http-server    (component/using (http-kit/new-web-server)
+    :rest-api    (component/using (rest-api/new-rest-api)
                                      [:core
-                                      :health-service
-                                      :worker-comp
                                       :func-comp
                                       :task-comp
+                                      :worker-comp
                                       ])))
 
 (defn dev-system []

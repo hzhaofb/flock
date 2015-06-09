@@ -11,7 +11,7 @@
   (:require [com.stuartsierra.component :as component]
             [clojure.java.jdbc :as jdbc]
             [base.util :refer [create-ttl-cache get-cache-value set-cache-value!]]
-            [flock.util :refer [mydb]]
+            [component.database :refer [mydb]]
             [clojure.set :as set]))
 
 (def env-cache (create-ttl-cache 5000))

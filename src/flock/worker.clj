@@ -10,18 +10,12 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
             [clojure.string :refer [join]]
-            [ring.middleware.json :refer [wrap-json-body wrap-json-params wrap-json-response]]
-            [ring.middleware.keyword-params :refer [wrap-keyword-params]]
             [base.util :as util]
-            [base.rest-util :refer [json-response echo]]
-            [component.webservice :refer [WebService]]
             [component.scheduler :refer [schedule-fixed-delay]]
             [flock.environment :refer [get-env-by-id get-env-by-name]]
-            [flock.util :refer [mydb get-config-int]]
-            [component.database :refer [get-conn]]
-            [base.mysql :refer :all]
-            [com.stuartsierra.component :as component]
-            [compojure.core :as cc])
+            [component.database :refer [mydb get-conn get-single-row insert-row]]
+            [component.core :refer [get-config-int]]
+            [com.stuartsierra.component :as component])
   (:import (java.sql SQLException)))
 
 (defn- convert-heartbeat [worker]
@@ -166,51 +160,14 @@
        (jdbc/query (mydb comp))
        (map #(before-response comp %)))})
 
-(defn- make-routes [comp]
-  (cc/routes
-    (cc/POST "/worker" [ip pid env :as req]
-             ;; create a new worker with specified ip and pid
-             ;; if already exist, return existing workerId wid
-             (json-response req start-worker comp ip pid env))
-    (cc/PUT "/worker/:wid" [wid wstatus :as req]
-            ;; report status for a given worker and update heartbeat
-            (json-response req update-heartbeat comp wid wstatus))
-    (cc/PUT "/worker/:wid/admin" [wid cmd :as req]
-            ;; set admin command of the worker
-            (json-response req set-admin-cmd comp wid cmd))
-    (cc/DELETE "/worker/:wid" [wid :as req]
-            ;; report worker shutdown
-            (json-response req stop-worker comp wid))
-    (cc/GET "/worker/:wid" [wid :as req]
-            ;; get all details of worker
-            (json-response req get-worker-by-id comp wid))
-    (cc/GET "/worker/ip_pid/:ip/:pid" [ip pid :as req]
-            ;; get all details of worker
-            (json-response req get-worker-by-ip-pid comp ip pid))
-    (cc/GET "/worker_log/:wid" [wid :as req]
-            ;; all worker log for wid
-            (json-response req list-worker-log comp wid))
-    (cc/POST "/pworker" req
-             ;; post on this endpoint for sanity test
-             (json-response req echo req))))
-
 ; Domain model component for workers
 (defrecord WorkerComponent [core scheduler flock-db env-comp]
   component/Lifecycle
-
   (start [this]
-    (let [routes (-> (make-routes this)
-                     (wrap-json-response))]
-      (-> this
-          (start-monitor)
-          (assoc :routes routes))))
+    (start-monitor this))
 
   (stop [this]
-    this)
-
-  WebService
-  (get-routes [this]
-    (:routes this)))
+    this))
 
 (defn new-worker-comp
   []
