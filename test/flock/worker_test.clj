@@ -4,7 +4,8 @@
             [flock.task :refer :all]
             [flock.func :refer :all]
             [flock.server :refer :all]
-            [flock.test-system :refer :all]))
+            [flock.test-system :refer :all]
+            [clojure.tools.logging :as log]))
 
 (set-test-name *ns*)
 
@@ -12,7 +13,7 @@
   [(before :facts (setup-fact))
    (after :facts (teardown-test))])
 
-(facts "test worker CRUD both positive and negative cases"
+(facts "test worker CRUD both positive and negative cases "
        (fact
          (start-worker (worker-comp) "1.1.1.1" 1 "java")
          (select-keys (start-worker (worker-comp) "1.1.1.1" 1 "java")
@@ -27,11 +28,11 @@
          (start-worker (worker-comp) nil 1 "cobol") => (throws AssertionError)
 
          (let [start ((get-worker-by-id (worker-comp) 1) :heartbeat)
-               _ (Thread/sleep 1000)
+               _ (Thread/sleep 500)
                worker (update-heartbeat (worker-comp) 1 "test info")]
            (select-keys worker [:ip :pid :wid :wstatus])
            => {:ip "1.1.1.1" :pid 1 :wid 1 :wstatus "test info"}
-           (worker :heartbeat) => #(< start %))
+           (worker :heartbeat) => #(<= start %))
 
          ; test stop worker
          (stop-worker (worker-comp) 1)
@@ -56,9 +57,7 @@
          (let [worker (get-worker-by-id (worker-comp) 1)
                hb_resp(update-heartbeat (worker-comp) 1 nil)]
            worker => nil
-           hb_resp => {:msg "worker 1 is not found"
-                       :admin_cmd "SHUTDOWN"}
-           )
+           hb_resp => {:msg "worker 1 is not found"})
          ; Worker 1 expired and so task should be ready for reserve
          ; worker 2 should be able to reserve the task
          (start-worker (worker-comp) "1.1.1.2" 1 "java")

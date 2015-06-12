@@ -21,6 +21,7 @@
   [cheshire.core :as json]
   [base.util :refer :all]
   [base.rest-util :refer :all]
+  [component.database :refer :all]
   [flock.system]
   [flock.test-system :refer :all]
   [flock.worker :refer :all]

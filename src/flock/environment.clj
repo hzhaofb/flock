@@ -14,7 +14,7 @@
             [component.database :refer [mydb]]
             [clojure.set :as set]))
 
-(def env-cache (create-ttl-cache 5000))
+(defonce env-cache (create-ttl-cache 5000))
 
 (defn get-envs
   "get all envs as map of eid to env name {1 \"java\", 2 \"python\"} "

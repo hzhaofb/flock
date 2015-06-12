@@ -24,16 +24,9 @@
    "flock.db.port" "3306"
    "flock.db.timeout" "5000"
    "flock.db.host" "localhost"
-   "flock.db.database" "flocktest"
+   "flock.db.database" "flockopentest"
    "flock.db.user" "root"
-   "flock.db.password" "root"
-   "flocklog.db.adapter" "mysql"
-   "flocklog.db.port" "3306"
-   "flocklog.db.timeout" "5000"
-   "flocklog.db.host" "localhost"
-   "flocklog.db.database" "flocklogtest"
-   "flocklog.db.user" "root"
-   "flocklog.db.password" "root"})
+   "flock.db.password" "root"})
 
 (defn test-system
   []
@@ -108,7 +101,6 @@
   ([task testid]
    (-> (assoc task
          :short_key (get-short-key (:task_key task))
-         :reverse_domain (get-reverse-domain (:task_key task))
          :wid 0
          :eid 1
          :tid testid)))
@@ -144,7 +136,7 @@
   ; clean up flocktest on test begin so if fails, we can check db
   ; Can't truncate server here since this is called after system start
   ; because we are using (db) which starts the tsys
-  (doseq [table ["server" "worker" "worker_log" "task"
+  (doseq [table ["server" "worker" "task"
                  "schedule" "func"]]
     (jdbc/execute! (db) [(str "truncate " table)])
     (log/info "truncated" table))

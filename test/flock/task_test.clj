@@ -85,10 +85,6 @@
          (-> (get-task-by-id (task-comp) 1)
              (to-expected)) => result-task1))
 
-(facts "get-task-by-id test none exist"
-       (fact
-         (get-task-by-id (task-comp) 3) => nil))
-
 (facts "get-task-by-fid-key test."
        (fact
          (create-task (task-comp) test-task1)
@@ -96,18 +92,15 @@
              (to-expected))
          => result-task1))
 
-(facts "get-task-by-fid-key test none exist"
-       (fact
-         (get-task-by-fid-key (task-comp) 1 "none-exist-key") => nil))
-
-
 (facts "get-task-by-fid-key test neg fid"
        (fact
-         (get-task-by-fid-key (task-comp) -1 "no-useful key")
-         => (throws AssertionError)))
+         (get-task-by-id (task-comp) 3) => nil
 
-(facts "get-task-by-fid-key test no key"
-       (fact
+         (get-task-by-fid-key (task-comp) 1 "none-exist-key") => nil
+
+         (get-task-by-fid-key (task-comp) -1 "no-useful key")
+         => (throws AssertionError)
+
          (get-task-by-fid-key (task-comp) 1 nil)
          => (throws AssertionError)))
 
@@ -121,7 +114,6 @@
            (to-expected t2) =>  (into result-task1
                                  {:eta 345 :params new-param
                                   :task_key "http://test.domain1.com/key1"
-                                  :reverse_domain "com.domain1.test"
                                   :short_key "http://test.domain1.com/key1"})
            (< (:modified t1) (:modified t2)) => true)))
 
@@ -131,7 +123,6 @@
          (-> (update-task (task-comp) 1 "new task key 2" 345 nil)
              (to-expected))
          => (into result-task1 {:eta 345 :task_key "new task key 2"
-                                :reverse_domain nil
                                 :short_key "new task key 2"})))
 
 (facts "reserve-task and compete-task test"
@@ -177,7 +168,12 @@
          (complete-task (task-comp) {:tid 2 :wid 1 :eta 123})
          => (throws Exception "task tid=2 is not reserved by worker wid=1")
 
-         (get-task-by-id (task-comp) 2) => nil))
+         (get-task-by-id (task-comp) 2) => nil
+
+         (-> (update-task (task-comp) 2 "new task key 2" 345 nil)
+             (to-expected))
+         => (into result-task2 {:eta 345 :task_key "new task key 2"
+                                :short_key "new task key 2"})))
 
 (fact "reserve-task future eta test"
       (fact
@@ -215,27 +211,3 @@
 
         (complete-task (task-comp) {:wid 1 :tid 2 :eta 123})
         => (throws Exception "task tid=2 is not reserved by worker wid=1")))
-
-
-(facts "list and count func backlog task"
-       (fact
-         (create-task (task-comp) test-task1)
-         (create-task (task-comp) test-task2)
-         (-> (list-func-backlog (task-comp) 1)
-             (first)
-             (to-expected)) => result-task1
-         (count-func-backlog (task-comp) 1)
-         => {:fid 1 :backlog_count 2}
-
-         (start-worker (worker-comp) "1.1.1.1" 2 "java")
-         (reserve-task (task-comp) 1)
-         (count-func-backlog (task-comp) 1)
-         => {:fid 1 :backlog_count 1}
-
-         (->> (list-func-backlog (task-comp) 1)
-              (map to-expected))
-         => (list result-task2)
-
-         (count-func-backlog (task-comp) 99)
-         => {:fid 99 :error "unknown fid"}))
-

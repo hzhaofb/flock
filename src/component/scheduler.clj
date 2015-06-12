@@ -9,16 +9,19 @@
 
 (ns component.scheduler
   (:require [clojure.tools.logging :as log]
-            [com.stuartsierra.component :as component])
+            [com.stuartsierra.component :as component]
+            [base.util :as util])
   (:import (java.util.concurrent Executors TimeUnit)))
 
 (defn schedule-fixed-delay
   "schedule execution of command with fixed delay of delay time_unit
   (default TimeUnit/SECOND) with initial delay (default 0)"
   [comp {command :command init_delay :init_delay time_unit :time_unit delay :delay
-         :or   {time_unit TimeUnit/SECONDS init_delay 0}}]
-  (-> (get comp :scheduled_threadpool)
-      (.scheduleWithFixedDelay command init_delay delay time_unit)))
+         msg :msg :or {time_unit TimeUnit/SECONDS init_delay 0}}]
+  (let [tpool (get comp :scheduled_threadpool)
+        cmd (util/wrap-try-catch command msg)]
+    (.scheduleWithFixedDelay
+      tpool cmd init_delay delay time_unit)))
 
 (defrecord SchedulerComponent []
   component/Lifecycle

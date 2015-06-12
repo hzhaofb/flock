@@ -137,7 +137,6 @@ A task contains info required for function to be executed.
 
  * task_key is a unique string within a given function (fid), such as URL or use id.
  * short_key is used for unique index. It stores the full task_key if it fit, otherwise apply sha1
- * reverse_domain is populated if the task_key is a url
  * cardinality: 10^9
 
  

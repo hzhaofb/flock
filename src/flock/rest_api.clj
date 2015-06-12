@@ -58,7 +58,6 @@
         ;; update function's settings
         (json-response req func/update-func func-comp fid settings))
 
-
       ; task related
       (cc/GET "/worker/:wid/task" [wid :as req]
         ;; reserves a task for a given worker wid.
@@ -89,12 +88,6 @@
       (cc/PUT "/task/:tid" [tid task_key eta params :as req]
         ;; update existing task
         (json-response req task/update-task task-comp tid task_key eta params))
-      (cc/GET "/func/:fid/backlog" [fid :as req]
-        ;; get function with id
-        (json-response req task/list-func-backlog task-comp fid))
-      (cc/GET "/func/:fid/backlog_count" [fid :as req]
-        ;; get function with id
-        (json-response req task/count-func-backlog task-comp fid))
 
       ; worker related
       (cc/POST "/worker" [ip pid env :as req]
@@ -116,9 +109,7 @@
       (cc/GET "/worker/ip_pid/:ip/:pid" [ip pid :as req]
         ;; get all details of worker
         (json-response req worker/get-worker-by-ip-pid worker-comp ip pid))
-      (cc/GET "/worker_log/:wid" [wid :as req]
-        ;; all worker log for wid
-        (json-response req worker/list-worker-log worker-comp wid)))))
+      )))
 
 (defrecord RestAPI []
   component/Lifecycle

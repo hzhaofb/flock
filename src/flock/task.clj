@@ -41,8 +41,7 @@
 (defn- list-tasks
   [db where args]
   (let [select "select eid, eta, t.tid, wid, fid, task_key,
-                     params, short_key, reverse_domain,
-                     unix_timestamp(modified) as modified
+                     params, short_key, unix_timestamp(modified) as modified
                 from task t join schedule s on s.tid = t.tid where "
         sql (str select where)
         q (into [sql] args)]
@@ -71,7 +70,7 @@
   "return a task for given fid and task_key"
   ([comp fid task_key]
    (let [fid (to-int fid "fid")]
-     (assert-pos {:fid fid})
+     (assert (pos? fid))
      (assert (some? task_key) "invalid task_key")
      (->> (get-short-key task_key)
           (select-task-and-schedule (mydb comp) "t.fid=? and t.short_key=?" fid )))))
@@ -80,9 +79,7 @@
   "insert into task table and populate the returned task with tid.
   If duplicate fid short_key, add msg \"task already exists.\" "
   [db task]
-  (let [setters (select-keys task [:fid :task_key :short_key :reverse_domain :params])
-        fid (:fid task)
-        short_key (:short_key task)]
+  (let [setters (select-keys task [:fid :task_key :short_key :params])]
     (try
       (->> (jdbc/insert! db :task setters)
            (first)
@@ -91,14 +88,12 @@
       (catch SQLException ex
         ; We have unique constraint on fid and short_key
         ; Get the tid with fid and short_key
-        (jdbc/update! db :task setters ["fid=? and short_key=?" fid short_key])
-        (->> ["select tid, fid, task_key, short_key, reverse_domain,
-               unix_timestamp(modified) as modified, params
-               from task where fid=? and short_key=?" fid short_key]
-             (jdbc/query db)
-             (first)
-             (from-db)
-             (merge task {:msg "task already exists."}))))))
+        (let [{fid :fid short_key :short_key} task]
+          (jdbc/update! db :task setters ["fid=? and short_key=?" fid short_key])
+          (->> ["select tid from task where fid=? and short_key=?" fid short_key]
+               (jdbc/query db)
+               (first)
+               (merge task {:msg "task already exists."})))))))
 
 (defn- insert-schedule
   "insert the schedule part of the task and returns the task itself"
@@ -121,25 +116,22 @@
   ; check to make sure eta is less than 10 year in the future
   (let [ten-year (tc/plus (tc/now) (tc/years 10))]
     (assert (< eta (tcc/to-epoch ten-year))
-            "eta more than 10 year in the future. Note: eta should be in epoch time." )))
+            "eta more than 10 year in the future. Note: eta should be in epoch time." ))
+  true)
 
 (defn- to-db-key
   "process task-key related field including short_key and reverse-domain"
   [task]
-  (let [task_key (:task_key task)
-        short_key (get-short-key task_key)
-        task (assoc task :reverse_domain (get-reverse-domain task_key))]
-    (if (= short_key task_key)
-      ; remove task_key to save space
-      (rename-keys task {:task_key :short_key})
-      (assoc task :short_key short_key))))
+  (->> (:task_key task)
+       (get-short-key)
+       (assoc task :short_key)))
 
 (defn- process-func
   "process function related fields in task before insert"
   [comp task]
   (let [fcomp (get comp :func-comp)
-        f (func/get-func fcomp (task :fid))
-        _ (assert (some? f) "invalid fid")]
+        f (func/get-func fcomp (task :fid))]
+    (assert (some? f) "invalid fid")
     (merge (select-keys f [:eid]) task)))
 
 (defn create-task
@@ -149,55 +141,53 @@
    :params in map format is converted to json string before saved
    therefore preseves the map format when selected."
   [comp task]
-  (validate-eta (task :eta))
+  (validate-eta (:eta task))
   (assert-some task [:task_key :fid])
-  (let [task (->> task
-                  (process-func comp)
-                  (to-db-key)
-                  (to-db-params))
-        db (mydb comp)]
-    (->> task
-         (insert-task db)
-         (insert-schedule db)
-         (log-time-info #(str "created task: " %) )
-         (from-db))))
+  (->> task
+       (process-func comp)
+       (to-db-key)
+       (to-db-params)
+       (insert-task (mydb comp))
+       (insert-schedule (mydb comp))
+       (log-time-info #(str "created task: " %) )
+       (from-db)))
 
 (defn- create-or-update-schedule
-  [comp tid eta]
-  (let [db (mydb comp)
-        fcomp (get comp :func-comp)]
-    (if (= '(0) (jdbc/update! db :schedule {:eta eta} ["tid=?" tid]))
-      ; schedule is missing for this task, recreate it based on task info
-      ; Since we are avoiding using transaction, it is possible when task
-      ; was created but schedule was not or deleted. Following recovers schedule.
-      (let [{fid :fid reverse_domain :reverse_domain}
-           (->> ["select fid, reverse_domain from task where tid=?" tid]
-                (jdbc/query db)
-                (first))
-           {eid :eid} (func/get-func fcomp fid)]
-       (insert-schedule db {:tid tid :eta eta :eid eid})))))
+  [db tid eta]
+  (if (= '(0) (jdbc/update! db :schedule {:eta eta} ["tid=?" tid]))
+    ; schedule is missing for this task, recreate it based on task info
+    (jdbc/execute! db ["insert into schedule (tid, eta, eid)
+                            select t.tid, ?, f.eid
+                            from task as t join func as f
+                            on t.fid = f.fid
+                            where t.tid = ?" eta tid])))
 
-(defn update-task
+(defn- update-task-impl
   "Update the task and return the updated task.
    If eta is specified, update the schedule.
    If either task_key or params are specified, update the task table."
   [comp tid task_key eta params]
   (let [tid (to-int tid "tid")
-        _ (assert (> tid 0))]
-    (if (some? eta)
+        _ (assert (> tid 0))
+        db (mydb comp)]
+    (when (some? eta)
       ; if specified eta, update the schedule
       (let [eta (to-int eta)]
-        (assert (> eta 0))
-        (create-or-update-schedule comp tid (to-int eta))))
-    (let [keys (if (some? task_key)
+        (validate-eta eta)
+        (create-or-update-schedule db tid eta)))
+    (let [update (when (some? task_key)
                    (to-db-key {:task_key task_key}))
           update (if (some? params)
-                   (assoc keys :params (json/generate-string params))
-                   keys)]
+                   (assoc update :params (json/generate-string params))
+                   update)]
       (if update
-        (jdbc/update! (mydb comp) :task update ["tid=?" tid])))
-    (->> (get-task-by-id comp tid)
-         (log-time-info #(str "updated task " %)))))
+        (jdbc/update! db :task update ["tid=?" tid])))
+    (get-task-by-id comp tid)))
+
+(defn update-task
+  [comp tid task_key eta params]
+  (->> (update-task-impl comp tid task_key eta params)
+       (log-time-info #(str "updated task " %))))
 
 (defn- need-refresh-cache?
   [comp eid]
@@ -228,15 +218,16 @@
   ; must prevent this from happening by checking timestamp for last pull
   (when (need-refresh-cache? comp eid)
     (let [task-cache (get comp :task-cache)
-          ; set the pull_time here before query to avoid duplicate pulls
-          _ (swap! task-cache assoc eid {:pull_time (System/currentTimeMillis)})
-          batch-size (get-config-int comp "flock.task.cache.size" 50)
-          sql "select tid, eta from schedule where eta < unix_timestamp(now())
-               and wid = 0 and eid = ?
-               order by eta ASC limit ?"
-          query-result (->> (jdbc/query (mydb comp) [sql eid batch-size])
-                            (log-time-info #(str "filling task cache got " (count %))))]
-      (some->> (not-empty query-result)
+          batch-size (get-config-int comp "flock.task.cache.size" 50)]
+      ; set the pull_time here before query to avoid duplicate pulls
+      (swap! task-cache assoc eid {:pull_time (System/currentTimeMillis)})
+      (some->> ["select tid, eta from schedule
+                 where eta < unix_timestamp(now())
+                   and wid = 0 and eid = ?
+                 order by eta ASC limit ?" eid batch-size]
+               (jdbc/query (mydb comp))
+               (log-time-info #(str "filling task cache got " (count %)))
+               (not-empty)
                (apply conj (PersistentQueue/EMPTY))
                (ref)
                (assoc {:pull_time (System/currentTimeMillis)} :qref)
@@ -245,11 +236,11 @@
 (defn- take-candidate?
   "check if candidate should be processed by this server"
   [comp cand]
-  (let [tid (:tid cand)
-        {slot :slot server_count :server-count}
+  (let [{slot :slot server_count :server-count}
         (get-slot-info (:server-comp comp))]
-    (->> (max server_count 1)                               ; protect against 0 length
-         (rem tid)
+    ; protect against 0 length
+    (->> (max server_count 1)
+         (rem (:tid cand))
          (= slot))))
 
 (defn- dequeue-candidate-cache
@@ -323,17 +314,16 @@
     :deleted when no new_eta
     :not-reserved when wid didn't reserve tid"
   [db tid wid new_eta]
-  (if (and (some? new_eta) (pos? new_eta))
-    ;reschedule task to new_eta and indicate if successful
-    (if (= '(0)
-           (jdbc/update! db :schedule {:wid 0 :eta new_eta}
-                         ["tid=? and wid=?" tid wid]))
-      :not-reserved
-      :rescheduled)
-    ; no new eta, delete schedule and task
-    (if (= '(0) (jdbc/delete! db :schedule ["tid=? and wid=?" tid wid]))
-      :not-reserved
-      :deleted)))
+  (let [where ["tid=? and wid=?" tid wid]]
+    (if (and (some? new_eta) (validate-eta new_eta))
+     ;reschedule task to new_eta and indicate if successful
+     (if (= '(0) (jdbc/update! db :schedule {:wid 0 :eta new_eta} where))
+       :not-reserved
+       :rescheduled)
+     ; no new eta, delete schedule and task
+     (if (= '(0) (jdbc/delete! db :schedule where))
+       :not-reserved
+       :deleted))))
 
 (defn- complete-result-to-msg
   [result tid wid new_eta]
@@ -372,46 +362,12 @@
   If the task is being executed, delete the schedule
   so it will not be rescheduled."
   [comp tid]
-  (log/info "delete tid=" tid)
+  (log/info "delete task tid=" tid)
   (let [[count]  (jdbc/delete! (mydb comp) :schedule ["tid=?" tid])]
     (jdbc/delete! (mydb comp) :task ["tid=?" tid])
     (if (= 1 count)
       {:msg "task deleted"}
       {:msg (str "task " tid " doesn't exist") })))
-
-(defn list-func-backlog
-  "returns a list of tasks for this function with eta < now"
-  [comp fid]
-  (let [fcomp (get comp :func-comp)
-        f (func/get-func fcomp fid)
-        eid (:eid f)]
-    ; Can be expensive. MySql should scan schedule index
-    ;  wid, eid, eta
-    (if eid
-      (list-tasks (mydb comp)
-                  "s.wid = 0 and s.eta < unix_timestamp(now())
-                   and s.eid = ? and t.fid = ?"
-                  [eid fid]))))
-
-(defn count-func-backlog
-  "returns the count of tasks for this function with eta < now"
-  [comp fid]
-  (let [fcomp (get comp :func-comp)
-        fid (to-int fid "fid")
-        f (func/get-func fcomp fid)
-        eid (:eid f)]
-    (-> (if eid
-          (-> (jdbc/query
-                (mydb comp)
-                ["select count(*) as backlog_count
-                   from schedule s
-                   join task t on t.tid = s.tid
-                   where s.wid = 0 and s.eta < unix_timestamp(now())
-                   and s.eid = ? and t.fid = ?"
-                 eid fid])
-              (first))
-          {:error "unknown fid"})
-        (assoc :fid fid))))
 
 (defrecord TaskComponent
            [core flock-db worker-comp]

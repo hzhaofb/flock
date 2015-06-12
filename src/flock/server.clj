@@ -4,12 +4,12 @@
 ;; created: 4/16/15
 ;; flock.server
 ;; 
-;; Purpose: represent the server instance
-;;   Serves as a keeper of the server slot number
-;;   which is used during task reservation
-;;   to calculate which task id to reserve.
+;; Purpose: represent this server instance
+;;   It also keeps and updates server list and slot number of this server.
+;;   Server list and slot number are used during task reservation
+;;   to calculate if the task is a candidate for reservation.
 ;;   Update the server heartbeat periodically.
-;;   Clean up when server goes away and refresh the server.
+;;   Clean up when other server goes away and refresh the server.
 ;;   Hold state {:sid <server-slot-id> :sid-list <current sorted list of sid> :
 
 (ns flock.server
@@ -19,8 +19,7 @@
             [com.stuartsierra.component :as component]
             [component.database :refer [mydb insert-row]]
             [component.core :refer [get-config-int]]
-            [component.scheduler :refer [schedule-fixed-delay]])
-  (:import (java.sql SQLException)))
+            [component.scheduler :refer [schedule-fixed-delay]]))
 
 ; public API
 (defn get-slot-info
@@ -50,17 +49,18 @@
 (defn- insert-or-get-server-id
   [comp]
   (let [ip (util/get-ip)
-        pid (util/get-pid)]
-    (try
-      (insert-row (mydb comp) :server {:ip ip :pid pid})
-      (catch SQLException ex
-        (-> (jdbc/query (mydb comp) ["select sid from server where ip=? and pid=?" ip pid])
-            (first)
-            (:sid))))))
+        pid (util/get-pid)
+        sid (->> ["select sid from server where ip=? and pid=?" ip pid]
+                 (jdbc/query (mydb comp) )
+                 (first)
+                 (:sid))]
+    (if sid
+      sid
+      (insert-row (mydb comp) :server {:ip ip :pid pid}))))
 
 (defn- register-server
   "Called when a new server starts.
-  Create a server record using current which is unique.
+  Create a server record using current ip and pid.
   returns server created"
   ([comp]
    (let [sid (insert-or-get-server-id comp)]
@@ -74,7 +74,6 @@
   (let [sid (-> (:state comp)
                 (deref)
                 (:sid))
-        _ (log/debug "update server heatbeat" sid)
         updated (->> ["update server set heartbeat = current_timestamp() where sid = ?" sid]
                      (jdbc/execute! (mydb comp))
                      (first))]
@@ -106,13 +105,17 @@
   [comp]
   (let [comp (assoc comp :state (atom {}))
         scheduler (:scheduler comp)
-        cycle (get-config-int comp "flock.server.monitor.cycle.sec" 10)
+        monitor-cycle (get-config-int comp "flock.server.monitor.cycle.sec" 10)
         heartbeat (get-config-int comp "flock.server.heartbeat" 10)]
     (register-server comp)
     (log/info "starting server heartbeat" heartbeat "sec")
-    (schedule-fixed-delay scheduler {:command (fn [] (update-server-heartbeat comp)) :delay heartbeat})
-    (log/info "starting server monitoring, checking every" cycle "sec")
-    (schedule-fixed-delay scheduler {:command (fn [] (monitor-dead-server comp)) :delay cycle})
+    (->> (fn [] (update-server-heartbeat comp))
+         (assoc {:delay heartbeat :msg "server heartbeat"} :command)
+         (schedule-fixed-delay scheduler))
+    (log/info "starting server monitoring, checking every" monitor-cycle "sec")
+    (->> (fn [] (monitor-dead-server comp))
+         (assoc {:delay monitor-cycle :msg "monitor dead server"} :command)
+         (schedule-fixed-delay scheduler ))
     comp))
 
 ; Domain model component for

@@ -33,11 +33,4 @@
                (rest-delete url "worker" wid)
                (-> (rest-get url "worker" wid)
                    (:wid)) => nil
-
-               ; test the worker log
-               ; use destructuring
-               (let [logs (-> (rest-get url "worker_log" wid)
-                              (:logs))]
-                 (-> logs (first) (:event)) => "START"
-                 (-> logs (second) (:event)) => "ADMIN_CMD"
-                 (-> logs (get 2) (:event)) => "SHUTDOWN"))))
+               )))

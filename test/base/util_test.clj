@@ -16,14 +16,6 @@
          (fu/assert-pos {}) => nil
          (fu/assert-pos {:a nil :b -2}) => (throws AssertionError)))
 
-(facts "get-reverse-domain"
-       (fact
-         (fu/get-reverse-domain "http://www.test.com:80/path1?a=b") => "com.test.www"
-         (fu/get-reverse-domain "https://www.test.com") => "com.test.www"
-         (fu/get-reverse-domain "http://test.com") => "com.test"
-         (fu/get-reverse-domain "test") => nil
-         (fu/get-reverse-domain "test.invaliddomainname") => nil))
-
 (facts "trunc string test"
        (fact
          (fu/trunc "1234567890" 5) => "12345"

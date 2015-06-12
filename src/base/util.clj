@@ -39,21 +39,9 @@
   ([val name]
     (try (Integer. val)
          (catch Exception e
-           (throw (Exception. (str "Invalid " name ". Integer expected."))))))
+           (throw (AssertionError. (str "Invalid " name ". Integer expected."))))))
   ([val]
     (to-int val val)))
-
-(defn get-reverse-domain
-  "parse url and return inverse domain. nil if not valid url"
-  [u]
-  (try
-    (-> (as-url u)
-        (.getHost)
-        (string/split #"\.")
-        (reverse)
-        (->> (string/join ".")))
-    (catch Exception ex
-      nil)))
 
 (defn try-update
   "For input map m, try to apply function f to value of k in m
@@ -144,3 +132,12 @@
   [ac key value]
   (swap! ac assoc key value)
   value)
+
+(defn wrap-try-catch
+  "return a function that wrap input func f with try catch"
+  [f msg]
+  (fn []
+    (try
+      (f)
+      (catch Exception ex
+        (log/error ex msg)))))

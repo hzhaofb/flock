@@ -7,7 +7,7 @@ create table environment (
     eid tinyint unsigned not null primary key auto_increment,
     name varchar(25) not null
 );
-insert into environment (name) values ('worker-cluster-1'),('worker-cluster-1');
+insert into environment (name) values ('java'),('python'),('go');
 
 -- Task function represent the piece of code that will be executed to process the task.
 -- Each function takes task_key and optional params as input and output new eta to reschedule
@@ -33,28 +33,10 @@ create table worker (
   ip varchar(50) not null,
   pid int not null,
   eid tinyint unsigned not null,
-  heartbeat timestamp default current_timestamp,
+  heartbeat timestamp default current_timestamp on update current_timestamp,
   admin_cmd varchar(50) null,
   wstatus text,
   unique key ip_pid (ip, pid)
-);
-
--- worker-log is history of workers, including start shutdown, timeout events.
-drop table if exists worker_log;
-create table worker_log (
-  wlogid int unsigned not null primary key auto_increment,
-  event varchar(20) not null,
-  event_time timestamp default current_timestamp,
-  wid mediumint not null,
-  ip varchar(50) not null,
-  pid int not null,
-  eid tinyint unsigned not null,
-  heartbeat timestamp,
-  admin_cmd varchar(50) null,
-  wstatus text,
-  tids varchar(1000), -- list of task ids for dead worker
-  key wid (wid),
-  key ip_pid (ip, pid)
 );
 
 -- schedule for tasks. Task id (tid) is also used to assign new task
@@ -77,13 +59,10 @@ create table task (
    fid smallint unsigned not null,
    -- if task_key is less than 41, store key in short_key, otherwise store sha1 of task_key
    short_key varchar(40) not null,
-   -- null if key can fit in short_key
    task_key varchar(4096) null,
-   reverse_domain varchar(256) character set latin1 null,
    modified timestamp default current_timestamp on update current_timestamp,
    params text null,
-   unique key type_key (fid, short_key),
-   key task_reverse_domain (reverse_domain)
+   unique key type_key (fid, short_key)
 );
 
 -- In memory summary table to track flock servers active in the system

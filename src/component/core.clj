@@ -1,8 +1,5 @@
 ;; -*- coding: utf-8 -*-
-;;
-
 ;; Author: David Creemer
-;;
 ;; component encapsulation application name (:app_name) and associated config map (:config)
 
 (ns component.core
@@ -29,20 +26,21 @@
   [core new-config]
   (reset! (:config core) new-config))
 
-;; initialize all of the "core" elements of an application
-(defrecord Core [app-name]
+(defn- load-config
+  [app-name]
+  (->> (str app-name ".properties")
+       (io/file)
+       (props/load-from)
+       ; need to use atom to hold the map so we can change it
+       ; during test for set-config!
+       (atom)))
 
+(defrecord Core [app-name]
   component/Lifecycle
 
   (start [this]
     (log/info "starting app" app-name)
-    (->> (str app-name ".properties")
-         (io/file)
-         (props/load-from)
-         ; need to use atom to hold the map so we can change it
-         ; during test
-         (atom)
-         (assoc this :config)))
+    (assoc this :config (load-config app-name)))
 
   (stop [this]
     this))
