@@ -67,7 +67,7 @@
         ;; reserves tasks upto the limit for a given worker wid.
         ;; worker must PUT back each task with new_eta after complete
         (json-response req task/reserve-tasks task-comp wid limit))
-      (cc/PUT "/worker/:wid/task/:tid" [wid tid new_eta error :as req]
+      (cc/PUT "/worker/:wid/task/:tid" [req]
         ;; report task complete with new eta.
         (json-response req task/complete-task task-comp (req :params)))
       (cc/PUT "/task/cache" [:as req]

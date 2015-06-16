@@ -24,7 +24,7 @@
 
 (defn get-worker-by-id
   [comp wid]
-  (-> (get-single-row (mydb comp) :worker :wid wid)
+  (-> (get-single-row (mydb comp) :worker :wid (util/to-int wid "wid"))
       (convert-heartbeat)))
 
 (defn get-worker-by-ip-pid

@@ -140,7 +140,10 @@
                  "schedule" "func"]]
     (jdbc/execute! (db) [(str "truncate " table)])
     (log/info "truncated" table))
-  (server/start-server (server-comp))
+  (try
+    (server/start-server (server-comp))
+    (catch Exception ex
+      (log/error ex "fail to start test system")))
   (set-test-config! test-local-config))
 
 (defn teardown-test
@@ -148,10 +151,13 @@
   []
   (log/info "teardown-test for " @test-name-atom)
   (if (some? @sysa)
-    (do (log/info "teardown truncate server")
-        (jdbc/execute! (db) ["truncate server"])
-        (component/stop @sysa)
-        (reset! sysa nil))))
+    (try
+      (log/info "teardown truncate server")
+      (jdbc/execute! (db) ["truncate server"])
+      (component/stop @sysa)
+      (reset! sysa nil)
+      (catch Exception ex
+        (log/error ex "fail to teardown test")))))
 
 ; for integration testing vars
 (def url

@@ -32,10 +32,10 @@
          (insert-row (db) :server {:ip "1.1.1.1" :pid 1})
          (insert-row (db) :server {:ip "1.1.1.1" :pid 2})
          (let [comp (start-server (server-comp))]
-           (get-slot-info comp) => {:slot 2 :server-count 3}
+           (server-state comp) => {:sid 3 :my-index 2 :sid-list [1 2 3]}
            ; after 3.5 seconds, the other two server should be cleaned up
            ; and the active server should pick up the change
            (Thread/sleep 3500)
-           (get-slot-info comp) => {:slot 0 :server-count 1}))
+           (server-state comp) => {:sid 3 :my-index 0 :sid-list [3]}))
        (teardown-test))
 

@@ -71,6 +71,6 @@ create table server (
    sid int not null primary key auto_increment,
    ip varchar(50) not null,
    pid int not null,
-   heartbeat timestamp default current_timestamp,
+   heartbeat timestamp default current_timestamp on update current_timestamp,
    unique key ip_pid (ip, pid)
 ) engine = memory;

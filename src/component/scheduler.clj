@@ -15,7 +15,8 @@
 
 (defn schedule-fixed-delay
   "schedule execution of command with fixed delay of delay time_unit
-  (default TimeUnit/SECOND) with initial delay (default 0)"
+  (default TimeUnit/SECOND) with initial delay (default 0)
+  :msg describes the context of the command and is logged if with any execution exception"
   [comp {command :command init_delay :init_delay time_unit :time_unit delay :delay
          msg :msg :or {time_unit TimeUnit/SECONDS init_delay 0}}]
   (let [tpool (get comp :scheduled_threadpool)

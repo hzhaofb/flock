@@ -78,7 +78,7 @@
          ; non exist worker
 
          (-> (rest-get url "worker" 1 "task")
-             (:msg)) => "Assert failed: worker 1 not registered\n(some? worker)"
+             (:msg)) => "Assert failed: worker 1 not registered\n(some? eid)"
 
          ; create worker first
          (let [{wid :wid} (rest-post url "worker" {:ip "1.1.1.1" :pid 3 :env "java"})]
@@ -99,16 +99,6 @@
              (-> (rest-get url "worker" wid "task")
                  (select-keys (keys t)))
              => (to-rest-expected t)))))
-
-(facts "list and count func backlog task REST"
-       (fact
-         (rest-post url "task" test-task1)
-         (rest-post url "task" test-task2)
-         (rest-get url "func" 1 "backlog_count")
-         => {:fid 1 :backlog_count 2 :status "OK"}
-         (rest-get url "func" 99 "backlog_count")
-         => {:fid 99 :error "unknown fid" :status "OK"} ))
-
 
 (facts "reserve tasks test"
        (fact
