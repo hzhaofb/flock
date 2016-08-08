@@ -1,6 +1,7 @@
 # Flock
 
-Flock is a scalable task scheduler and distributor. 
+Flock is a scalable task scheduler and work distributor implemented in clojure. Task executor can be
+in any language. 
 
 Flock is first developed at Flipboard to schedule millions.=Flock can be used to schedule millions of tasks 
 and then distribute them among dynamic number of worker servers to execute these tasks when they are due. 
